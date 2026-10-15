@@ -8,6 +8,24 @@ import { ROUTE_PATHS } from '@/app/routes/routePaths'
 import type { UserRole } from '@/types/user'
 import { toast } from 'sonner'
 
+// Floating ambient green bubbles configuration
+const FLOATING_BUBBLES = [
+  { id: 1, size: 28, left: '5%', duration: '15s', delay: '0s' },
+  { id: 2, size: 52, left: '15%', duration: '20s', delay: '2s', sway: true },
+  { id: 3, size: 22, left: '24%', duration: '13s', delay: '5s' },
+  { id: 4, size: 68, left: '33%', duration: '24s', delay: '1s', sway: true },
+  { id: 5, size: 36, left: '42%', duration: '17s', delay: '7s' },
+  { id: 6, size: 84, left: '52%', duration: '26s', delay: '3s', sway: true },
+  { id: 7, size: 26, left: '62%', duration: '14s', delay: '8s' },
+  { id: 8, size: 58, left: '71%', duration: '21s', delay: '4s', sway: true },
+  { id: 9, size: 32, left: '80%', duration: '16s', delay: '6s' },
+  { id: 10, size: 74, left: '89%', duration: '25s', delay: '0.5s', sway: true },
+  { id: 11, size: 24, left: '10%', duration: '12s', delay: '9s' },
+  { id: 12, size: 44, left: '46%', duration: '18s', delay: '11s', sway: true },
+  { id: 13, size: 20, left: '76%', duration: '11s', delay: '10s' },
+  { id: 14, size: 62, left: '95%', duration: '22s', delay: '8s', sway: true },
+]
+
 export default function FigmaLoginPage() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
@@ -69,7 +87,29 @@ export default function FigmaLoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-emerald-waves relative overflow-hidden select-none">
+    <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green relative overflow-hidden select-none">
+      {/* Ambient Lighting Orbs */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-emerald-400/25 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[420px] h-[420px] bg-teal-300/25 dark:bg-teal-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/2 right-10 w-72 h-72 bg-lime-300/20 dark:bg-lime-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Floating Translucent Green Bubbles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {FLOATING_BUBBLES.map((bubble) => (
+          <div
+            key={bubble.id}
+            className={`floating-bubble ${bubble.sway ? 'floating-bubble-sway' : ''}`}
+            style={{
+              width: `${bubble.size}px`,
+              height: `${bubble.size}px`,
+              left: bubble.left,
+              animationDuration: bubble.duration,
+              animationDelay: bubble.delay,
+            }}
+          />
+        ))}
+      </div>
+
       <div className="relative z-10 w-full max-w-[460px] pt-12">
         {/* Floating Top Emblem matching Figma Screenshot 230543 */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">

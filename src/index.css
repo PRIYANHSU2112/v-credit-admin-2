@@ -187,6 +187,132 @@
   pointer-events: none;
 }
 
+/* ─── WHITE-GREEN GRADIENT LOGIN & FLOATING BUBBLES ───────── */
+
+/* Luminous White-to-Green Gradient Background */
+.bg-login-white-green {
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(167, 243, 208, 0.45) 0%, transparent 45%),
+    radial-gradient(circle at 85% 12%, rgba(110, 231, 183, 0.4) 0%, transparent 40%),
+    radial-gradient(circle at 50% 88%, rgba(52, 211, 153, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 88% 85%, rgba(187, 247, 208, 0.5) 0%, transparent 45%),
+    linear-gradient(145deg, #ffffff 0%, #f4fbf7 30%, #ecfdf5 65%, #dcfce7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .bg-login-white-green {
+  background: 
+    radial-gradient(circle at 20% 15%, rgba(16, 185, 129, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 85% 20%, rgba(5, 150, 105, 0.2) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(4, 120, 87, 0.25) 0%, transparent 55%),
+    linear-gradient(145deg, #021a10 0%, #032616 35%, #05331f 70%, #01140c 100%);
+}
+
+/* Glass Floating Bubble */
+.floating-bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 32% 32%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(209, 250, 229, 0.6) 25%,
+    rgba(110, 231, 183, 0.4) 50%,
+    rgba(16, 185, 129, 0.28) 75%,
+    rgba(5, 150, 105, 0.35) 100%
+  );
+  border: 1.5px solid rgba(110, 231, 183, 0.65);
+  box-shadow: 
+    inset -3px -3px 8px rgba(16, 185, 129, 0.25),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.95),
+    0 8px 24px rgba(16, 185, 129, 0.16);
+  backdrop-filter: blur(1.5px);
+  will-change: transform, opacity;
+  animation-name: bubbleFloatUp;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.dark .floating-bubble {
+  background: radial-gradient(
+    circle at 32% 32%,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(52, 211, 153, 0.35) 30%,
+    rgba(16, 185, 129, 0.25) 60%,
+    rgba(4, 120, 87, 0.35) 100%
+  );
+  border: 1.5px solid rgba(52, 211, 153, 0.5);
+  box-shadow: 
+    inset -3px -3px 8px rgba(5, 150, 105, 0.4),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(5, 150, 105, 0.3);
+}
+
+.floating-bubble::after {
+  content: '';
+  position: absolute;
+  top: 14%;
+  left: 18%;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 80%);
+  transform: rotate(-30deg);
+}
+
+@keyframes bubbleFloatUp {
+  0% {
+    transform: translateY(105vh) translateX(0) scale(0.7);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(50vh) translateX(18px) scale(1);
+    opacity: 0.95;
+  }
+  75% {
+    transform: translateY(25vh) translateX(-14px) scale(1.05);
+  }
+  90% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-15vh) translateX(10px) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.floating-bubble-sway {
+  animation-name: bubbleFloatUpSway;
+}
+
+@keyframes bubbleFloatUpSway {
+  0% {
+    transform: translateY(105vh) translateX(0) scale(0.65);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.8;
+  }
+  35% {
+    transform: translateY(68vh) translateX(-22px) scale(0.9);
+  }
+  70% {
+    transform: translateY(30vh) translateX(20px) scale(1.05);
+    opacity: 0.9;
+  }
+  90% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateY(-15vh) translateX(-12px) scale(1.1);
+    opacity: 0;
+  }
+}
+
 /* ─── ENTERPRISE COMPONENT STYLES ─────────────────────────── */
 
 /* Modern Rounded-xl Navigation Item (Reduced Radius from pill) */

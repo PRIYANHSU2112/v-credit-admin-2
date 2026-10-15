@@ -49,6 +49,24 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ]
 
+// Floating ambient green bubbles configuration
+const FLOATING_BUBBLES = [
+  { id: 1, size: 28, left: '5%', duration: '15s', delay: '0s' },
+  { id: 2, size: 52, left: '15%', duration: '20s', delay: '2s', sway: true },
+  { id: 3, size: 22, left: '24%', duration: '13s', delay: '5s' },
+  { id: 4, size: 68, left: '33%', duration: '24s', delay: '1s', sway: true },
+  { id: 5, size: 36, left: '42%', duration: '17s', delay: '7s' },
+  { id: 6, size: 84, left: '52%', duration: '26s', delay: '3s', sway: true },
+  { id: 7, size: 26, left: '62%', duration: '14s', delay: '8s' },
+  { id: 8, size: 58, left: '71%', duration: '21s', delay: '4s', sway: true },
+  { id: 9, size: 32, left: '80%', duration: '16s', delay: '6s' },
+  { id: 10, size: 74, left: '89%', duration: '25s', delay: '0.5s', sway: true },
+  { id: 11, size: 24, left: '10%', duration: '12s', delay: '9s' },
+  { id: 12, size: 44, left: '46%', duration: '18s', delay: '11s', sway: true },
+  { id: 13, size: 20, left: '76%', duration: '11s', delay: '10s' },
+  { id: 14, size: 62, left: '95%', duration: '22s', delay: '8s', sway: true },
+]
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -108,34 +126,52 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-screen flex items-center justify-center p-4 bg-emerald-waves overflow-hidden selection:bg-emerald-500/20 select-none">
+    <div className="relative min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green overflow-hidden selection:bg-emerald-500/20 select-none">
       {/* Ambient Lighting Orbs */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-lime-400/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-emerald-400/25 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[420px] h-[420px] bg-teal-300/25 dark:bg-teal-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/2 right-10 w-72 h-72 bg-lime-300/20 dark:bg-lime-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Floating Translucent Green Bubbles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {FLOATING_BUBBLES.map((bubble) => (
+          <div
+            key={bubble.id}
+            className={`floating-bubble ${bubble.sway ? 'floating-bubble-sway' : ''}`}
+            style={{
+              width: `${bubble.size}px`,
+              height: `${bubble.size}px`,
+              left: bubble.left,
+              animationDuration: bubble.duration,
+              animationDelay: bubble.delay,
+            }}
+          />
+        ))}
+      </div>
 
       <div className="relative z-10 w-full max-w-[460px] space-y-6">
         {/* Brand Header with Uploaded V-Credit Logo */}
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="relative group cursor-pointer">
             <EmiSafeLogo size={76} />
-            <div className="absolute -inset-2 rounded-full bg-emerald-400/20 blur-md -z-10 group-hover:bg-emerald-400/35 transition-colors" />
+            <div className="absolute -inset-2 rounded-full bg-emerald-400/30 blur-md -z-10 group-hover:bg-emerald-400/45 transition-colors" />
           </div>
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 dark:text-white drop-shadow-xs">
               V-CREDIT
             </h1>
-            <p className="text-xs sm:text-sm text-emerald-200/80 font-medium tracking-wide mt-1">
+            <p className="text-xs sm:text-sm text-emerald-800 dark:text-emerald-300 font-semibold tracking-wide mt-1">
               Enterprise Device Security & MDM Console
             </p>
           </div>
         </div>
 
-        {/* Login Card */}
-        <Card className="p-6 sm:p-8 backdrop-blur-2xl bg-card/90 dark:bg-card/85 border border-white/20 dark:border-emerald-500/20 shadow-2xl rounded-3xl space-y-6">
+        {/* Login Card with Frosted Glass Aesthetics */}
+        <Card className="p-6 sm:p-8 backdrop-blur-2xl bg-white/90 dark:bg-card/90 border border-emerald-100/90 dark:border-emerald-500/20 shadow-[0_25px_60px_-15px_rgba(16,185,129,0.18),0_10px_20px_-5px_rgba(0,0,0,0.04)] rounded-3xl space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5 text-left">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-muted-foreground">
                 Email / Mobile / Username
               </label>
               <Input
@@ -143,15 +179,15 @@ export default function LoginPage() {
                 placeholder="e.g. admin@vcredit.in or 9876543210"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                leftIcon={<User className="h-4 w-4 text-primary" />}
+                leftIcon={<User className="h-4 w-4 text-emerald-600 dark:text-primary" />}
                 required
-                className="h-11 rounded-xl bg-background/60 focus:ring-2 focus:ring-emerald-500/20"
+                className="h-11 rounded-xl bg-white dark:bg-background/80 border-slate-200 dark:border-border focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 dark:text-foreground"
               />
             </div>
 
             <div className="space-y-1.5 text-left">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-muted-foreground">
                   Password
                 </label>
                 <a
@@ -160,7 +196,7 @@ export default function LoginPage() {
                     e.preventDefault()
                     toast.info('Password recovery link sent to registered mobile.')
                   }}
-                  className="text-xs text-primary hover:underline font-semibold"
+                  className="text-xs text-emerald-600 dark:text-primary hover:underline font-semibold"
                 >
                   Forgot password?
                 </a>
@@ -170,7 +206,7 @@ export default function LoginPage() {
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                leftIcon={<Lock className="h-4 w-4 text-primary" />}
+                leftIcon={<Lock className="h-4 w-4 text-emerald-600 dark:text-primary" />}
                 rightIcon={
                   <button
                     type="button"
@@ -185,14 +221,14 @@ export default function LoginPage() {
                   </button>
                 }
                 required
-                className="h-11 rounded-xl bg-background/60 focus:ring-2 focus:ring-emerald-500/20"
+                className="h-11 rounded-xl bg-white dark:bg-background/80 border-slate-200 dark:border-border focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 dark:text-foreground"
               />
             </div>
 
             <Button
               type="submit"
               variant="primary"
-              className="w-full h-11 text-sm font-bold rounded-xl mt-3 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all"
+              className="w-full h-11 text-sm font-bold rounded-xl mt-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/35 transition-all"
               isLoading={isLoading}
               loadingText="Authenticating..."
               rightIcon={<ArrowRight className="h-4 w-4" />}
@@ -202,9 +238,9 @@ export default function LoginPage() {
           </form>
 
           {/* Demo Accounts Quick-Select Chips */}
-          <div className="pt-4 border-t border-border/60 space-y-2.5">
+          <div className="pt-4 border-t border-slate-100 dark:border-border/60 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-amber-500" />
                 Quick Demo Personas
               </span>
@@ -221,14 +257,14 @@ export default function LoginPage() {
                     onClick={() => handleSelectDemo(acc)}
                     className={`flex flex-col text-left p-2.5 rounded-xl border text-xs transition-all duration-150 ${
                       isSelected
-                        ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30'
-                        : 'border-border/60 bg-muted/40 hover:bg-muted/80'
+                        ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 shadow-xs ring-1 ring-emerald-500/30'
+                        : 'border-slate-200 dark:border-border/60 bg-slate-50/60 dark:bg-muted/40 hover:bg-emerald-50/40 hover:border-emerald-300'
                     }`}
                   >
-                    <span className="font-bold text-foreground text-xs leading-tight">
+                    <span className="font-bold text-slate-900 dark:text-foreground text-xs leading-tight">
                       {acc.label}
                     </span>
-                    <span className="text-[10px] text-muted-foreground truncate mt-0.5">
+                    <span className="text-[10px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">
                       {acc.desc}
                     </span>
                   </button>
@@ -239,8 +275,8 @@ export default function LoginPage() {
         </Card>
 
         {/* Security Trust Footnote */}
-        <div className="flex items-center justify-center gap-2 text-xs text-emerald-200/90 font-medium">
-          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+        <div className="flex items-center justify-center gap-2 text-xs text-emerald-900/80 dark:text-emerald-300 font-semibold">
+          <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           <span>V-Credit 256-bit Encrypted Operations Session</span>
         </div>
       </div>
