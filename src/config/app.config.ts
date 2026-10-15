@@ -12,7 +12,7 @@ export const APP_CONFIG = {
   storageKeys: {
     token: 'v_credit_auth_token',
     user: 'v_credit_user_profile',
-    theme: 'v_credit_theme_mode',
+    theme: 'v_credit_theme_mode_v2',
     sidebar: 'v_credit_sidebar_collapsed',
   },
   pagination: {
