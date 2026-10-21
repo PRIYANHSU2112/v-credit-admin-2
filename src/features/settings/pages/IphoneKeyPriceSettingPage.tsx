@@ -20,24 +20,24 @@ export default function IphoneKeyPriceSettingPage() {
       {/* Title */}
       <div className="pb-4 border-b border-border mb-6">
         <h2 className="text-xl font-bold text-foreground tracking-tight">iPhone Key Price Setting</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Configure default retail and distributor billing unit price per Apple iOS key</p>
+        <p className="text-sm text-muted-foreground mt-1">Configure default retail and distributor billing unit price per Apple iOS key</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Old Key Price */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-foreground">Current Active iPhone Price (₹ / Key)</label>
+          <label className="text-sm font-bold text-foreground">Current Active iPhone Price (₹ / Key)</label>
           <input
             type="text"
             value={`₹${oldPrice}`}
             disabled
-            className="w-full h-11 rounded-lg border border-border px-4 text-sm bg-muted text-muted-foreground cursor-not-allowed font-mono font-bold"
+            className="w-full h-11 rounded-xl border border-border px-4 text-sm bg-muted text-muted-foreground cursor-not-allowed font-mono font-bold"
           />
         </div>
 
         {/* New iPhone Key Price */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-foreground">New iPhone Key Price (₹)</label>
+          <label className="text-sm font-bold text-foreground">New iPhone Key Price (₹)</label>
           <input
             type="number"
             placeholder="Enter price per iPhone key"

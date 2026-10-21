@@ -87,7 +87,7 @@ export default function FigmaLoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green relative overflow-hidden select-none">
+    <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green relative overflow-hidden">
       {/* Ambient Lighting Orbs */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-emerald-400/25 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[420px] h-[420px] bg-teal-300/25 dark:bg-teal-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />

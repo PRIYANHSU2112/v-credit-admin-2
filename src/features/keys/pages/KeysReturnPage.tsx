@@ -39,7 +39,7 @@ export default function KeysReturnPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="text-xs text-muted-foreground font-medium">Back to Distributors</span>
+        <span className="text-sm text-muted-foreground font-medium">Back to Distributors</span>
       </div>
 
       {/* Card */}
@@ -48,11 +48,11 @@ export default function KeysReturnPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">Distributor Name</label>
+            <label className="text-sm font-semibold text-foreground">Distributor Name</label>
             <select
               value={selectedDistributor}
               onChange={(e) => setSelectedDistributor(e.target.value)}
-              className="w-full h-11 rounded-xl border border-border bg-background px-3.5 text-xs text-foreground font-medium focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all"
+              className="w-full h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-foreground font-medium focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all"
             >
               {MOCK_DISTRIBUTORS.map((d) => (
                 <option key={d.id} value={d.agency}>
@@ -63,7 +63,7 @@ export default function KeysReturnPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">Number of Keys</label>
+            <label className="text-sm font-semibold text-foreground">Number of Keys</label>
             <input
               type="number"
               min={1}
@@ -71,7 +71,7 @@ export default function KeysReturnPage() {
               onChange={(e) => setNumberOfKeys(e.target.value)}
               placeholder="Enter Number of Keys for Return"
               required
-              className="w-full h-11 rounded-xl border border-border bg-background px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              className="w-full h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
 
@@ -79,7 +79,7 @@ export default function KeysReturnPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn-action-primary text-xs font-bold h-10 px-6 disabled:opacity-50"
+              className="btn-action-primary text-sm font-bold h-10 px-8 disabled:opacity-50"
             >
               {isSubmitting ? 'Processing...' : 'Return Keys'}
             </button>

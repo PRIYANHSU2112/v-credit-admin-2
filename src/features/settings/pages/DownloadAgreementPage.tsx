@@ -13,7 +13,7 @@ export default function DownloadAgreementPage() {
     <div className="bg-card p-8 rounded-2xl shadow-xs border border-border max-w-3xl text-card-foreground">
       <div className="pb-4 border-b border-border mb-6">
         <h2 className="text-xl font-bold text-foreground tracking-tight">Download Agreements & Compliance</h2>
-        <p className="text-xs text-muted-foreground mt-1">Official EMI SAFE partnership documentation, MDM mandates, and borrower agreements</p>
+        <p className="text-sm text-muted-foreground mt-1">Official EMI SAFE partnership documentation, MDM mandates, and borrower agreements</p>
       </div>
 
       <div className="space-y-3">
@@ -37,9 +37,9 @@ export default function DownloadAgreementPage() {
             <button
               type="button"
               onClick={() => toast.success(`Downloading "${ag.title}"...`)}
-              className="flex items-center gap-2 btn-action-primary text-xs font-bold px-4 py-2 rounded-lg shadow-xs"
+              className="flex items-center gap-2 btn-action-primary text-sm font-bold px-4 py-2 rounded-xl shadow-xs"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4" />
               Download
             </button>
           </div>

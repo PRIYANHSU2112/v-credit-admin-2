@@ -55,16 +55,16 @@ export default function FinancePage() {
       header: 'Reference ID',
       sortable: true,
       render: (item) => (
-        <span className="font-mono text-xs font-bold text-foreground">{item.ref}</span>
+        <span className="font-mono text-sm font-bold text-foreground">{item.ref}</span>
       ),
     },
     {
       id: 'party',
       header: 'Partner / Account',
       render: (item) => (
-        <div className="space-y-0.5 text-xs">
-          <p className="font-bold text-foreground">{item.partyName}</p>
-          <p className="text-[10px] text-muted-foreground uppercase">{item.tier}</p>
+        <div className="space-y-0.5">
+          <p className="font-bold text-foreground text-sm">{item.partyName}</p>
+          <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">{item.tier}</p>
         </div>
       ),
     },
@@ -72,7 +72,7 @@ export default function FinancePage() {
       id: 'type',
       header: 'Transaction Type',
       render: (item) => (
-        <span className="text-xs font-medium text-foreground bg-muted/60 px-2 py-0.5 rounded-md">
+        <span className="text-sm font-semibold text-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
           {item.type.replace('_', ' ')}
         </span>
       ),
@@ -82,7 +82,7 @@ export default function FinancePage() {
       header: 'Amount',
       sortable: true,
       render: (item) => (
-        <span className="font-bold text-xs text-foreground font-mono">
+        <span className="font-bold text-sm text-foreground font-mono">
           {formatCurrency(item.amount)}
         </span>
       ),
@@ -92,7 +92,7 @@ export default function FinancePage() {
       header: 'Date & Time',
       sortable: true,
       render: (item) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground font-mono">
           {formatDate(item.date, true)}
         </span>
       ),

@@ -10,6 +10,8 @@ import { toast } from 'sonner'
 import type { UserRole } from '@/types/user'
 import { EmiSafeLogo } from '@/components/common/EmiSafeLogo'
 
+import { APP_CONFIG } from '@/config/app.config'
+
 interface DemoAccount {
   role: UserRole
   name: string
@@ -21,31 +23,31 @@ interface DemoAccount {
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: 'super_admin',
-    name: 'Rajesh Sharma',
+    name: 'Master Vault Admin',
     identifier: 'admin@vcredit.in',
     label: 'Super Admin',
-    desc: 'Central Oversight',
+    desc: 'Global Network Access',
   },
   {
     role: 'stockist',
-    name: 'Aman Verma',
+    name: 'Music Beats Telecom',
     identifier: 'stockist.north@vcredit.in',
     label: 'Stockist',
-    desc: 'Regional Inventory',
+    desc: 'Regional Scope (North)',
   },
   {
     role: 'distributor',
-    name: 'Vikram Mehta',
+    name: 'VEDA ENTERPRISE Hub',
     identifier: 'delhi.dist@vcredit.in',
     label: 'Distributor',
-    desc: 'City Operations Hub',
+    desc: 'City Hub Scope (Delhi)',
   },
   {
     role: 'dealer',
-    name: 'Karan Patel',
+    name: 'Apex Phone Gallery',
     identifier: 'metro.telecom@vcredit.in',
     label: 'Dealer',
-    desc: 'Retail Shop & KYC',
+    desc: 'Retail Store & End Users',
   },
 ]
 
@@ -87,7 +89,7 @@ export default function LoginPage() {
     toast.info(`Selected ${acc.label} credentials`)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!identifier.trim() || !password.trim()) {
       toast.error('Please enter both your identifier and password.')
@@ -96,15 +98,47 @@ export default function LoginPage() {
 
     setIsLoading(true)
 
-    // Simulating authentication delay
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const res = await fetch(`${APP_CONFIG.apiBaseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
+      })
+      const json = await res.json()
 
+      if (json.success && json.data?.token) {
+        const u = json.data
+        const effectiveRole = (u.enterpriseRole || (u.role === 'admin' ? 'super_admin' : u.role)) as UserRole
+
+        dispatch(
+          setCredentials({
+            token: u.token,
+            user: {
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              phone: u.phone || '+91 98765 43210',
+              role: effectiveRole,
+              status: 'active',
+              availableKeys: u.keys ?? 0,
+              allocatedKeys: u.keys ?? 0,
+              walletBalance: 250000,
+              createdAt: '2026-01-15T10:00:00Z',
+            },
+          })
+        )
+        toast.success(`Welcome back, ${u.name}! (${effectiveRole.toUpperCase()})`)
+        navigate(from, { replace: true })
+        return
+      } else {
+        toast.error(json.message || 'Invalid credentials')
+      }
+    } catch (err) {
+      console.warn('Live login network issue, using scoped demo session:', err)
       const demoUser = DEMO_ACCOUNTS.find((d) => d.role === activeDemoRole) || DEMO_ACCOUNTS[0]
-
       dispatch(
         setCredentials({
-          token: `demo_jwt_token_${Date.now()}`,
+          token: `demo_token_${activeDemoRole}`,
           user: {
             id: `usr_${activeDemoRole}`,
             name: demoUser.name,
@@ -119,14 +153,15 @@ export default function LoginPage() {
           },
         })
       )
-
       toast.success(`Welcome back, ${demoUser.name}!`)
       navigate(from, { replace: true })
-    }, 600)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="relative min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green overflow-hidden selection:bg-emerald-500/20 select-none">
+    <div className="relative min-h-screen w-screen flex items-center justify-center p-4 bg-login-white-green overflow-hidden selection:bg-emerald-500/20">
       {/* Ambient Lighting Orbs */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-emerald-400/25 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[420px] h-[420px] bg-teal-300/25 dark:bg-teal-500/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />

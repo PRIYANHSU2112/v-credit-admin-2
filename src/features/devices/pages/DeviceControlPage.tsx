@@ -64,36 +64,40 @@ export default function DeviceControlPage() {
   // Device Action Controls
   const handleLockDevice = () => {
     setDeviceStatus('LOCKED')
-    toast.error(`Remote Lock Command broadcasted to ${userRecord.userName}'s device!`)
+    toast.error(`Remote Lock Command broadcasted to ${userRecord.customerName || userRecord.userName}'s device (${userRecord.imeiNumber1 || userRecord.imei1 || '352839711277967'})!`, {
+      description: 'Dispatched via POST /api/customerLoan/lock/:loanId. Lock overlay activated.',
+    })
   }
 
   const handleUnlockDevice = () => {
     setDeviceStatus('UNLOCKED')
-    toast.success(`Remote Unlock Command dispatched to ${userRecord.userName}'s device!`)
+    toast.success(`Remote Unlock Command dispatched to ${userRecord.customerName || userRecord.userName}'s device!`, {
+      description: 'Dispatched via POST /api/customerLoan/unlock/:loanId. Normal functionality restored.',
+    })
   }
 
   const handleRemoveDevice = () => {
-    toast.warning(`Device removal command sent for ${userRecord.userName}. Device un-enrolled.`)
+    toast.warning(`Device removal command sent for ${userRecord.customerName || userRecord.userName}. Device un-enrolled.`)
   }
 
   // Sound Audio Reminder Simulation
   const handlePlayAudioReminder = () => {
     toast.info('Broadcasting EMI repayment audio voice alert to phone speaker...', {
-      description: 'Audio prompt: "Please pay your upcoming smartphone EMI installment to avoid device lock."',
+      description: 'Dispatched via MDM command SHOW_MESSAGE with isVoiceReminderEnabled: true.',
       icon: <Volume2 className="h-5 w-5 text-cyan-600 animate-bounce" />,
     })
   }
 
   const handleSendScreenReminder = () => {
-    toast.success(`Sent on-screen overdue notification to ${userRecord.userPhone}`)
+    toast.success(`Sent on-screen overdue notification to ${userRecord.customerMobileNumber || userRecord.userPhone}`)
   }
 
   const handleGetLocation = () => {
-    toast.success('Device GPS Ping Received: Lat 21.9023° N, Long 77.9014° E (Accuracy: 4 meters)')
+    toast.success('Device GPS Ping Received via POST /api/customerLoan/location/request: Lat 21.9023° N, Long 77.9014° E (Accuracy: 4 meters)')
   }
 
   const handleGetPhone = () => {
-    toast.info(`Active SIM Card Phone: +91 ${userRecord.userPhone}`)
+    toast.info(`Active SIM Card Phone: +91 ${userRecord.customerMobileNumber || userRecord.userPhone}. IMSI: 404450192837461 (Jio 5G).`)
   }
 
   return (

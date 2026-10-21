@@ -50,7 +50,7 @@ export function KeysReturnModal({
             type="text"
             readOnly
             value={distributorName}
-            className="w-full h-10 rounded-xl border border-border bg-muted/60 px-3.5 text-xs text-foreground font-medium cursor-not-allowed select-none"
+            className="w-full h-10 rounded-xl border border-border bg-muted/60 px-3.5 text-xs text-foreground font-medium cursor-not-allowed"
           />
         </div>
 

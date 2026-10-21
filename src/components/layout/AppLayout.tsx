@@ -20,7 +20,28 @@ export function AppLayout() {
       return { title: 'Dashboard', subtitle: 'HOMES · OVERVIEW' }
     }
     if (path.includes('/analytics')) {
-      return { title: 'Analytics Console', subtitle: 'REPORTS · ANALYTICS' }
+      return { title: 'Analytics', subtitle: 'OVERVIEW · TELEMETRY' }
+    }
+    if (path.includes('/stockists')) {
+      return { title: 'Stockists', subtitle: 'DISTRIBUTION NETWORK · TIER-1 PARTNERS', isDashboard: false }
+    }
+    if (path.includes('/territories')) {
+      return { title: 'Territories', subtitle: 'GEOGRAPHIC COVERAGE · REGIONS & HUBS', isDashboard: false }
+    }
+    if (path.includes('/keys') && !path.includes('/keys-return')) {
+      return { title: 'Key Management', subtitle: 'LICENSE GENERATION · ALLOCATION', isDashboard: false }
+    }
+    if (path.includes('/inventory')) {
+      return { title: 'License Inventory', subtitle: 'CENTRAL VAULT · STOCK QUOTAS', isDashboard: false }
+    }
+    if (path.includes('/commissions')) {
+      return { title: 'Commissions', subtitle: 'FINANCIAL REVENUE · TIER SETTLEMENT', isDashboard: false }
+    }
+    if (path.includes('/audit')) {
+      return { title: 'Audit Trail', subtitle: 'SECURITY & COMPLIANCE · SYSTEM LOGS', isDashboard: false }
+    }
+    if (path.includes('/notifications')) {
+      return { title: 'Notifications & Alerts', subtitle: 'SYSTEM DISPATCH · QUOTA EVENTS', isDashboard: false }
     }
     if (path.includes('/distributors')) {
       return { title: 'Distributors', subtitle: 'PARTNERS · DISTRIBUTOR LIST', isDashboard: false }
@@ -38,13 +59,19 @@ export function AppLayout() {
       return { title: 'User Search', subtitle: 'CUSTOMER · ADVANCED QUERY', isDashboard: false }
     }
     if (path.includes('/users')) {
-      return { title: 'EmiSafe Users', subtitle: 'CUSTOMER · ENROLLED BORROWERS', isDashboard: false }
+      return { title: 'End Users', subtitle: 'CUSTOMER · ENROLLED BORROWERS', isDashboard: false }
+    }
+    if (path.includes('/emi-safe')) {
+      return { title: 'EMI Safe Management', subtitle: 'REPAYMENTS · INSTALLMENTS · SECURE PORTFOLIO', isDashboard: false }
     }
     if (path.includes('/device-control')) {
       return { title: 'Device Control Console', subtitle: 'MDM · REMOTE ACTIONS', isDashboard: false }
     }
     if (path.includes('/keys-return')) {
       return { title: 'Keys Return', subtitle: 'LICENSE · RETURN WORKFLOW', isDashboard: false }
+    }
+    if (path.includes('/reports/stockist-low-key')) {
+      return { title: 'Stockist Low-Key Report', subtitle: 'INVENTORY · REGIONAL THRESHOLD ALERT', isDashboard: false }
     }
     if (path.includes('/reports/distributor-low-key')) {
       return { title: 'Distributor Low-Key Report', subtitle: 'INVENTORY · THRESHOLD ALERT', isDashboard: false }

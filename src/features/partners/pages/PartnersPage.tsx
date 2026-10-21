@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 
 export default function PartnersPage() {
   const { user } = useAppSelector((state) => state.auth)
+  const role = user?.role || 'super_admin'
 
   const [partners, setPartners] = useState<Partner[]>(MOCK_PARTNERS)
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,8 +43,30 @@ export default function PartnersPage() {
     hasPermission(user?.role, 'partners:create:distributor') ||
     hasPermission(user?.role, 'partners:create:dealer')
 
+  // Scope partners based on active role hierarchy
+  const roleScopedPartners = useMemo(() => {
+    if (role === 'distributor') {
+      const distName = (user?.name || 'VEDA ENTERPRISE').toLowerCase()
+      return partners.filter((p) => p.role === 'dealer' || p.parentName?.toLowerCase().includes(distName))
+    }
+    if (role === 'stockist') {
+      const stockistName = (user?.name || 'Music Beats').toLowerCase()
+      return partners.filter(
+        (p) =>
+          p.role !== 'stockist' ||
+          p.name.toLowerCase().includes(stockistName) ||
+          p.parentName?.toLowerCase().includes(stockistName)
+      )
+    }
+    if (role === 'dealer') {
+      const dealerName = (user?.name || 'Malviya mobile hub').toLowerCase()
+      return partners.filter((p) => p.name.toLowerCase().includes(dealerName) || p.contactPerson.toLowerCase().includes(dealerName))
+    }
+    return partners
+  }, [partners, role, user?.name])
+
   const filteredPartners = useMemo(() => {
-    return partners.filter((p) => {
+    return roleScopedPartners.filter((p) => {
       const matchesSearch =
         searchQuery.trim() === '' ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,7 +79,7 @@ export default function PartnersPage() {
 
       return matchesSearch && matchesTier && matchesStatus
     })
-  }, [partners, searchQuery, tierFilter, statusFilter])
+  }, [roleScopedPartners, searchQuery, tierFilter, statusFilter])
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault()

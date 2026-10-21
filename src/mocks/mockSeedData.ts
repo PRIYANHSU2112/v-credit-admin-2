@@ -4,6 +4,7 @@
  */
 
 export interface DashboardStats {
+  stockistCount: number
   distributorCount: number
   dealerCount: number
   userCount: number
@@ -20,6 +21,7 @@ export interface DashboardStats {
 }
 
 export const DEFAULT_DASHBOARD_STATS: DashboardStats = {
+  stockistCount: 3,
   distributorCount: 2,
   dealerCount: 79,
   userCount: 9419,
@@ -37,70 +39,125 @@ export const DEFAULT_DASHBOARD_STATS: DashboardStats = {
 
 export interface DistributorRecord {
   id: string
+  _id?: string
+  entityCode?: string
   agency: string
+  name?: string
   phone: string
+  email?: string
+  stockist?: string
+  superStockiest?: string
   city: string
   state: string
+  territory?: string
   lastBillingDate: string
   remark?: string
   availableKeys: number
+  available?: number
   usedKeys: number
   totalKeys: number
+  keys?: number
   iphoneKeys: number
+  enterpriseRole?: 'distributor'
+  status?: string
 }
 
 export const MOCK_DISTRIBUTORS: DistributorRecord[] = [
   {
     id: 'dist_1',
+    _id: '6708ab9e1234567890abc001',
+    entityCode: 'DST-1001',
     agency: 'Music Beats',
+    name: 'Music Beats',
     phone: '9407262622',
+    email: 'musicbeats@vcredit.in',
+    stockist: 'Music Beats',
+    superStockiest: 'Music Beats',
     city: 'Betul',
     state: 'Madhya Pradesh',
+    territory: 'Madhya Pradesh',
     lastBillingDate: '25-07-2026 16:45:48',
     remark: 'baad me lenge',
     availableKeys: 0,
+    available: 0,
     usedKeys: 5810,
     totalKeys: 5810,
+    keys: 5810,
     iphoneKeys: 0,
+    enterpriseRole: 'distributor',
+    status: 'Active',
   },
   {
     id: 'dist_2',
+    _id: '6708ab9e1234567890abc002',
+    entityCode: 'DST-1002',
     agency: 'VEDA ENTERPRISE',
+    name: 'VEDA ENTERPRISE',
     phone: '7000142357',
+    email: 'veda.enterprise@vcredit.in',
+    stockist: 'Music Beats',
+    superStockiest: 'Music Beats',
     city: 'Betul',
     state: 'Madhya Pradesh',
+    territory: 'Madhya Pradesh',
     lastBillingDate: '20-07-2026 19:05:57',
     remark: 'Active network',
     availableKeys: 0,
+    available: 0,
     usedKeys: 3200,
     totalKeys: 3200,
+    keys: 3200,
     iphoneKeys: 20,
+    enterpriseRole: 'distributor',
+    status: 'Active',
   },
   {
     id: 'dist_3',
+    _id: '6708ab9e1234567890abc003',
+    entityCode: 'DST-1003',
     agency: 'Apex Telecom Logistics',
+    name: 'Apex Telecom Logistics',
     phone: '9811029384',
+    email: 'apextelecom@vcredit.in',
+    stockist: 'North Region Key Logistics',
+    superStockiest: 'North Region Key Logistics',
     city: 'Ludhiana',
     state: 'Punjab',
+    territory: 'Punjab',
     lastBillingDate: '28-09-2026 14:12:00',
     remark: 'Bulk stock approved',
     availableKeys: 40,
+    available: 40,
     usedKeys: 5160,
     totalKeys: 5200,
+    keys: 5200,
     iphoneKeys: 50,
+    enterpriseRole: 'distributor',
+    status: 'Active',
   },
   {
     id: 'dist_4',
+    _id: '6708ab9e1234567890abc004',
+    entityCode: 'DST-1004',
     agency: 'Delhi Hub Key Distribution',
+    name: 'Delhi Hub Key Distribution',
     phone: '9899120934',
+    email: 'delhidist@vcredit.in',
+    stockist: 'North Region Key Logistics',
+    superStockiest: 'North Region Key Logistics',
     city: 'New Delhi',
     state: 'Delhi',
+    territory: 'Delhi NCR',
     lastBillingDate: '30-09-2026 18:30:20',
     remark: 'Fast turnover',
     availableKeys: 120,
+    available: 120,
     usedKeys: 7680,
     totalKeys: 7800,
+    keys: 7800,
     iphoneKeys: 80,
+    enterpriseRole: 'distributor',
+    status: 'Active',
   },
 ]
 
@@ -113,7 +170,10 @@ export interface FollowupRemark {
 
 export interface DealerRecord {
   id: string
+  _id?: string
+  entityCode?: string
   dealerShop: string
+  name?: string
   dealerName?: string
   phone: string
   email?: string
@@ -126,16 +186,22 @@ export interface DealerRecord {
   superStockiest?: string
   national?: string
   gstNumber?: string
+  gst?: string
   address?: string
   city: string
   district?: string
   state: string
+  territory?: string
   pincode?: string
   lastBillingDate: string
   availableKeys: number
+  available?: number
   totalKeys: number
+  keys?: number
   remark?: string
   lockAccess: boolean
+  enterpriseRole?: 'dealer'
+  status?: string
   document1?: string
   document2?: string
   followups?: FollowupRemark[]
@@ -144,7 +210,10 @@ export interface DealerRecord {
 export const MOCK_DEALERS: DealerRecord[] = [
   {
     id: 'dlr_1',
+    _id: '6708ab9e1234567890def001',
+    entityCode: 'DLR-1001',
     dealerShop: 'Malviya mobile hub',
+    name: 'Malviya mobile hub',
     dealerName: 'Abhishek malviya',
     phone: '7974689544',
     email: 'abhimalviya319@gmail.com',
@@ -157,16 +226,22 @@ export const MOCK_DEALERS: DealerRecord[] = [
     superStockiest: 'Music Beats',
     national: 'HBT EMPLOYEE FAIYAZ',
     gstNumber: '23AABCU9603R1ZM',
+    gst: '23AABCU9603R1ZM',
     address: 'Bus stand Sukhtawa kalaakhar road sukhtawa',
     city: 'Betul',
     district: 'sukhtawa',
     state: 'Madhya Pradesh',
+    territory: 'Madhya Pradesh',
     pincode: '460001',
     lastBillingDate: 'NA',
     availableKeys: 0,
+    available: 0,
     totalKeys: 0,
+    keys: 0,
     remark: 'baad r',
     lockAccess: false,
+    enterpriseRole: 'dealer',
+    status: 'Active',
     document1: 'Aadhar_Card.pdf',
     document2: 'Shop_License.pdf',
     followups: [
@@ -177,7 +252,10 @@ export const MOCK_DEALERS: DealerRecord[] = [
   },
   {
     id: 'dlr_2',
+    _id: '6708ab9e1234567890def002',
+    entityCode: 'DLR-1002',
     dealerShop: 'SHREE GURUSHAHEB MOBILE',
+    name: 'SHREE GURUSHAHEB MOBILE',
     dealerName: 'Gurupreet Singh',
     phone: '9479597706',
     email: 'gurushaheb@gmail.com',
@@ -190,16 +268,22 @@ export const MOCK_DEALERS: DealerRecord[] = [
     superStockiest: 'Music Beats',
     national: 'HBT EMPLOYEE FAIYAZ',
     gstNumber: '23AABCU9603R1ZN',
+    gst: '23AABCU9603R1ZN',
     address: 'Main Bazaar Road, Near Bus Stand',
     city: 'Betul',
     district: 'Betul',
     state: 'Madhya Pradesh',
+    territory: 'Madhya Pradesh',
     pincode: '460001',
     lastBillingDate: '15-08-2026',
     availableKeys: 2,
+    available: 2,
     totalKeys: 140,
+    keys: 140,
     remark: 'High performance store',
     lockAccess: true,
+    enterpriseRole: 'dealer',
+    status: 'Active',
     document1: 'Shop_Reg.pdf',
     document2: 'Owner_ID.pdf',
     followups: [
@@ -375,8 +459,12 @@ export const MOCK_DEALERS: DealerRecord[] = [
 
 export interface EmiSafeUserRecord {
   id: string
+  _id?: string
+  customerId?: string
   userName: string
+  customerName?: string
   userPhone: string
+  customerMobileNumber?: string
   email?: string
   loanId?: string
   activationDate: string
@@ -386,24 +474,53 @@ export interface EmiSafeUserRecord {
   dealer: string
   dealerPhone: string
   lockStatus: 'locked' | 'unlocked'
+  deviceUnlockStatus?: 'LOCKED' | 'UNLOCKED'
   userFeature: string
+  mobileBrand?: string
+  mobileModel?: string
   status: 'active' | 'pending' | 'removed'
+  loanStatus?: 'APPROVED' | 'PENDING' | 'CLOSED'
+  isBanned?: boolean
   unlockCode?: string
   keyCode?: string
   imei1?: string
+  imeiNumber1?: string
   imei2?: string
+  imeiNumber2?: string
   deviceAgent?: string
   gsfId?: string
   deviceId?: string
   deviceName?: string
   claimed?: string
+  devicePolicy?: {
+    isResetAllowed: boolean
+    isUninstallAllowed: boolean
+    isDeveloperOptionsBlocked: boolean
+    isWallpaperEnabled: boolean
+    wallpaperUrl?: string
+    isWhatsAppBlocked: boolean
+    isInstagramBlocked: boolean
+    isSnapchatBlocked: boolean
+    isYouTubeBlocked: boolean
+    isFacebookBlocked: boolean
+    isDialerBlocked: boolean
+    isMessagesBlocked: boolean
+    isPlayStoreBlocked: boolean
+    isChromeBlocked: boolean
+    isVoiceReminderEnabled: boolean
+    isLocationEnabled: boolean
+  }
 }
 
 export const MOCK_USERS: EmiSafeUserRecord[] = [
   {
     id: 'usr_1',
+    _id: '6708ab9e1234567890usr001',
+    customerId: '6708ab9e1234567890cus001',
     userName: 'Sura uikey Topidhana',
+    customerName: 'Sura uikey Topidhana',
     userPhone: '6231386767',
+    customerMobileNumber: '6231386767',
     email: 'sura@gmail.com',
     loanId: 'old infinix',
     activationDate: '14/10/2026 19:17:33',
@@ -411,12 +528,19 @@ export const MOCK_USERS: EmiSafeUserRecord[] = [
     dealer: 'SIDHEEVINAYAK MOBILE & ELECTRONICS',
     dealerPhone: '6265979852',
     lockStatus: 'unlocked',
+    deviceUnlockStatus: 'UNLOCKED',
     userFeature: 'Infinix X6512 Android 11',
+    mobileBrand: 'INFINIX',
+    mobileModel: 'Infinix X6512',
     status: 'active',
+    loanStatus: 'APPROVED',
+    isBanned: false,
     unlockCode: '578985',
     keyCode: 'VC-883920',
     imei1: '352839711277967',
+    imeiNumber1: '352839711277967',
     imei2: '352839711277975',
+    imeiNumber2: '352839711277975',
     deviceAgent: 'Device - INFINIX MOBILITY LIMITED Infinix X6512, Android Version - 11, SDK - 30',
     gsfId: '4029182390',
     deviceId: '0',
@@ -424,6 +548,24 @@ export const MOCK_USERS: EmiSafeUserRecord[] = [
     claimed: 'C',
     activatedBy: '3.0',
     removedOn: '--',
+    devicePolicy: {
+      isResetAllowed: false,
+      isUninstallAllowed: false,
+      isDeveloperOptionsBlocked: true,
+      isWallpaperEnabled: true,
+      wallpaperUrl: 'https://api.vlocker.in/uploads/wallpaper.jpg',
+      isWhatsAppBlocked: false,
+      isInstagramBlocked: true,
+      isSnapchatBlocked: true,
+      isYouTubeBlocked: true,
+      isFacebookBlocked: true,
+      isDialerBlocked: false,
+      isMessagesBlocked: false,
+      isPlayStoreBlocked: true,
+      isChromeBlocked: true,
+      isVoiceReminderEnabled: true,
+      isLocationEnabled: true,
+    },
   },
   {
     id: 'usr_2',

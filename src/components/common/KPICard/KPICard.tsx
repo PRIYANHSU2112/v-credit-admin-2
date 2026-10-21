@@ -84,7 +84,7 @@ export function KPICard({
 
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
             {title}
           </p>
           <div className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-foreground">
@@ -95,7 +95,7 @@ export function KPICard({
             )}
           </div>
           {subtitle && (
-            <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
 
@@ -110,23 +110,23 @@ export function KPICard({
       </div>
 
       {typeof change === 'number' && (
-        <div className="mt-4 flex items-center gap-2 pt-2 border-t border-border/40 text-xs">
+        <div className="mt-4 flex items-center gap-2 pt-2 border-t border-border/40 text-xs sm:text-sm">
           <div
             className={cn(
-              'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-bold',
+              'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-bold text-xs',
               isPositive && 'bg-emerald-500/10 text-emerald-500',
               isNegative && 'bg-rose-500/10 text-rose-500',
               isNeutral && 'bg-muted text-muted-foreground'
             )}
           >
-            {isPositive && <ArrowUpRight className="h-3 w-3 stroke-[3]" />}
-            {isNegative && <ArrowDownRight className="h-3 w-3 stroke-[3]" />}
-            {isNeutral && <Minus className="h-3 w-3" />}
+            {isPositive && <ArrowUpRight className="h-3.5 w-3.5 stroke-[3]" />}
+            {isNegative && <ArrowDownRight className="h-3.5 w-3.5 stroke-[3]" />}
+            {isNeutral && <Minus className="h-3.5 w-3.5" />}
             <span>
               {isPositive ? `+${change}%` : `${change}%`}
             </span>
           </div>
-          <span className="text-muted-foreground text-[11px] truncate">{trendText}</span>
+          <span className="text-muted-foreground text-xs font-medium truncate">{trendText}</span>
         </div>
       )}
     </Card>

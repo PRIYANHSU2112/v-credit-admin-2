@@ -12,6 +12,16 @@ import {
   Settings,
   FileDown,
   Menu,
+  Building2,
+  Store,
+  Smartphone,
+  MapPin,
+  KeyRound,
+  Layers,
+  Coins,
+  ShieldAlert,
+  ShieldCheck,
+  Bell,
 } from 'lucide-react'
 import { useAppSelector, useAppDispatch } from '@/app/store/hooks'
 import { logout } from '@/features/auth/slices/authSlice'
@@ -79,6 +89,8 @@ export function AppSidebar({
   const isSuper = role === 'super_admin'
   const isStockist = role === 'stockist' || isSuper
   const isDistributor = role === 'distributor' || isStockist
+  const isDealer = role === 'dealer'
+  const canAccessEmiSafe = isSuper || isDealer
 
   // Enterprise modern NavLink shared style (reduced radius, comfortable font size & spacing)
   const pillCls = (isActive: boolean) =>
@@ -186,8 +198,21 @@ export function AppSidebar({
           </div>
         )}
 
+        {/* Super Admin / Partner Profile Card matching image */}
+        {!isCollapsed && (
+          <div className="mx-3 mt-3 mb-1 p-2.5 rounded-xl bg-muted/60 border border-border/60 flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full bg-primary/20 text-primary font-black text-xs flex items-center justify-center shrink-0 uppercase">
+              {user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-foreground truncate">{user?.name || 'Super Admin'}</p>
+              <p className="text-[10px] text-muted-foreground truncate font-mono">{user?.email || 'vlocker@gmail.com'}</p>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Nav Area */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 select-none">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {/* DASHBOARD */}
           <NavLink
             to={ROUTE_PATHS.OVERVIEW}
@@ -195,132 +220,101 @@ export function AppSidebar({
             className={({ isActive }) => pillCls(isActive)}
             title="Dashboard Overview"
           >
-            <LayoutDashboard className="h-5 w-5 shrink-0 text-primary" />
+            <LayoutDashboard className="h-4.5 w-4.5 shrink-0 text-primary" />
             {!isCollapsed && <span>Dashboard</span>}
           </NavLink>
 
-          {/* ANALYTICS (Moved from Dashboard to Sidebar) */}
+          {/* ONBOARD NEW PARTNER (Directly below Dashboard as requested) */}
+          <NavLink
+            to={ROUTE_PATHS.ADD_DISTRIBUTOR}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Onboard New Partner"
+          >
+            <UserPlus className="h-4.5 w-4.5 shrink-0 text-emerald-500" />
+            {!isCollapsed && <span>Add Partner</span>}
+          </NavLink>
+
+          {/* ANALYTICS (Directly below Add Partner as requested) */}
           <NavLink
             to={ROUTE_PATHS.ANALYTICS}
             onClick={closeMobile}
             className={({ isActive }) => pillCls(isActive)}
             title="Analytics Telemetry"
           >
-            <BarChart3 className="h-5 w-5 shrink-0 text-amber-500" />
+            <BarChart3 className="h-4.5 w-4.5 shrink-0 text-violet-500" />
             {!isCollapsed && <span>Analytics</span>}
           </NavLink>
 
-          {/* ROLE-AWARE PARTNER ONBOARDING */}
-          {/* 1. Super Admin: Add Partner (Stockist, Distributor, Dealer) */}
+          {/* STOCKISTS (Super Admin only - Tier 1) */}
           {isSuper && (
             <NavLink
-              to={ROUTE_PATHS.ADD_DISTRIBUTOR}
+              to={ROUTE_PATHS.STOCKISTS}
               onClick={closeMobile}
               className={({ isActive }) => pillCls(isActive)}
-              title="Add Partner (Stockist, Distributor, Dealer)"
+              title="Stockists Distribution Network"
             >
-              <UserPlus className="h-5 w-5 shrink-0 text-emerald-500" />
-              {!isCollapsed && <span>Add Partner</span>}
+              <Building2 className="h-4.5 w-4.5 shrink-0 text-blue-500" />
+              {!isCollapsed && <span>Stockists</span>}
             </NavLink>
           )}
 
-          {/* 2. Stockist: Add Distributor */}
-          {role === 'stockist' && (
+          {/* DISTRIBUTORS (Super Admin & Stockist) */}
+          {isStockist && (
             <NavLink
-              to={ROUTE_PATHS.ADD_DISTRIBUTOR}
+              to={ROUTE_PATHS.DISTRIBUTORS}
               onClick={closeMobile}
               className={({ isActive }) => pillCls(isActive)}
-              title="Add Distributor"
+              title="Distributor Partners"
             >
-              <UserPlus className="h-5 w-5 shrink-0 text-emerald-500" />
-              {!isCollapsed && <span>Add Distributor</span>}
+              <Users className="h-4.5 w-4.5 shrink-0 text-indigo-500" />
+              {!isCollapsed && <span>Distributors</span>}
             </NavLink>
           )}
 
-          {/* 3. Distributor: Add Dealer (Crucial requirement from MD files & user) */}
-          {role === 'distributor' && (
+          {/* DEALERS (Retail Outlets) */}
+          <NavLink
+            to={ROUTE_PATHS.DEALERS}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Retail Dealers"
+          >
+            <Store className="h-4.5 w-4.5 shrink-0 text-amber-500" />
+            {!isCollapsed && <span>Dealers</span>}
+          </NavLink>
+
+          {/* END USERS (Customers / Borrowers) */}
+          <NavLink
+            to={ROUTE_PATHS.USERS}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Enrolled End Users & Devices"
+          >
+            <Smartphone className="h-4.5 w-4.5 shrink-0 text-emerald-500" />
+            {!isCollapsed && <span>End Users</span>}
+          </NavLink>
+
+          {/* EMI SAFE (Super Admin & Dealer Only) */}
+          {canAccessEmiSafe && (
             <NavLink
-              to={ROUTE_PATHS.ADD_DISTRIBUTOR}
+              to={ROUTE_PATHS.EMI_SAFE}
               onClick={closeMobile}
               className={({ isActive }) => pillCls(isActive)}
-              title="Add Dealer to Network"
+              title="EMI Safe - Industry-Standard EMI & Installment Management"
             >
-              <UserPlus className="h-5 w-5 shrink-0 text-emerald-500" />
-              {!isCollapsed && <span>Add Dealer</span>}
-            </NavLink>
-          )}
-
-          {/* USER LIST - Accordion */}
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => toggleAccordion('userList')}
-              className={cn(
-                'flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-xs',
-                openAccordion === 'userList'
-                  ? 'bg-muted/80 text-foreground font-bold'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-muted/60'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 shrink-0 text-primary" />
-                {!isCollapsed && <span>User List</span>}
-              </div>
+              <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-emerald-500" />
               {!isCollapsed && (
-                <ChevronRight
-                  className={cn(
-                    'h-4 w-4 transition-transform duration-200 text-muted-foreground',
-                    openAccordion === 'userList' ? 'rotate-90' : ''
-                  )}
-                />
+                <div className="flex items-center justify-between flex-1">
+                  <span>EMI Safe</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    Active
+                  </span>
+                </div>
               )}
-            </button>
+            </NavLink>
+          )}
 
-            {/* Accordion Sub-items */}
-            {openAccordion === 'userList' && !isCollapsed && (
-              <div className="ml-3 space-y-1 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                {isStockist && (
-                  <NavLink
-                    to={ROUTE_PATHS.DISTRIBUTORS}
-                    onClick={closeMobile}
-                    className={({ isActive }) => yellowCls(isActive)}
-                  >
-                    Distributor List
-                  </NavLink>
-                )}
-                <NavLink
-                  to={ROUTE_PATHS.DEALERS}
-                  onClick={closeMobile}
-                  className={({ isActive }) => yellowCls(isActive)}
-                >
-                  Dealer List
-                </NavLink>
-                <NavLink
-                  to={ROUTE_PATHS.USERS}
-                  onClick={closeMobile}
-                  className={({ isActive }) => yellowCls(isActive)}
-                >
-                  User List
-                </NavLink>
-                <NavLink
-                  to={ROUTE_PATHS.PENDING_USERS}
-                  onClick={closeMobile}
-                  className={({ isActive }) => yellowCls(isActive)}
-                >
-                  Pending Users
-                </NavLink>
-                <NavLink
-                  to={ROUTE_PATHS.USER_SEARCH}
-                  onClick={closeMobile}
-                  className={({ isActive }) => yellowCls(isActive)}
-                >
-                  User Search
-                </NavLink>
-              </div>
-            )}
-          </div>
-
-          {/* REPORTS - Accordion */}
+          {/* REPORTS - Accordion (Placed directly below End Users as requested) */}
           {isDistributor && !isCollapsed && (
             <div className="space-y-1">
               <button
@@ -347,6 +341,11 @@ export function AppSidebar({
 
               {openAccordion === 'reports' && (
                 <div className="ml-3 space-y-1 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {isSuper && (
+                    <NavLink to={ROUTE_PATHS.REPORT_STOCKIST_LOW_KEY} onClick={closeMobile} className={({ isActive }) => yellowCls(isActive)}>
+                      Stockist Low-Key Report
+                    </NavLink>
+                  )}
                   <NavLink to={ROUTE_PATHS.REPORT_DISTRIBUTOR_LOW_KEY} onClick={closeMobile} className={({ isActive }) => yellowCls(isActive)}>
                     Distributor Low-Key Report
                   </NavLink>
@@ -354,10 +353,10 @@ export function AppSidebar({
                     Dealer Low-Key Report
                   </NavLink>
                   <NavLink to={ROUTE_PATHS.REPORT_TRANSFER} onClick={closeMobile} className={({ isActive }) => yellowCls(isActive)}>
-                    EmiSafe Transfer Report
+                    Key Transfer Report
                   </NavLink>
                   <NavLink to={ROUTE_PATHS.REPORT_RECEIVED_KEY} onClick={closeMobile} className={({ isActive }) => yellowCls(isActive)}>
-                    EmiSafe Received Key Report
+                    Received Key Report
                   </NavLink>
                   <NavLink to={ROUTE_PATHS.REPORT_IPHONE_TRANSFER} onClick={closeMobile} className={({ isActive }) => yellowCls(isActive)}>
                     iPhone Key Transfer Report
@@ -369,6 +368,76 @@ export function AppSidebar({
               )}
             </div>
           )}
+
+          {/* TERRITORIES (Super Admin) */}
+          {isSuper && (
+            <NavLink
+              to={ROUTE_PATHS.TERRITORIES}
+              onClick={closeMobile}
+              className={({ isActive }) => pillCls(isActive)}
+              title="Territories & Regional Coverage"
+            >
+              <MapPin className="h-4.5 w-4.5 shrink-0 text-rose-500" />
+              {!isCollapsed && <span>Territories</span>}
+            </NavLink>
+          )}
+
+          {/* KEY MANAGEMENT */}
+          <NavLink
+            to={ROUTE_PATHS.KEYS}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="License Key Minting & Allocation"
+          >
+            <KeyRound className="h-4.5 w-4.5 shrink-0 text-primary" />
+            {!isCollapsed && <span>Key Management</span>}
+          </NavLink>
+
+          {/* INVENTORY */}
+          <NavLink
+            to={ROUTE_PATHS.INVENTORY}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Vault Inventory"
+          >
+            <Layers className="h-4.5 w-4.5 shrink-0 text-cyan-500" />
+            {!isCollapsed && <span>Inventory</span>}
+          </NavLink>
+
+          {/* COMMISSIONS (Super Admin) */}
+          {isSuper && (
+            <NavLink
+              to={ROUTE_PATHS.COMMISSIONS}
+              onClick={closeMobile}
+              className={({ isActive }) => pillCls(isActive)}
+              title="Hierarchy Commission Ledgers"
+            >
+              <Coins className="h-4.5 w-4.5 shrink-0 text-yellow-500" />
+              {!isCollapsed && <span>Commissions</span>}
+            </NavLink>
+          )}
+
+          {/* NOTIFICATIONS */}
+          <NavLink
+            to={ROUTE_PATHS.NOTIFICATIONS}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="System & Quota Notifications"
+          >
+            <Bell className="h-4.5 w-4.5 shrink-0 text-sky-500" />
+            {!isCollapsed && <span>Notifications</span>}
+          </NavLink>
+
+          {/* AUDIT LOGS */}
+          <NavLink
+            to={ROUTE_PATHS.AUDIT}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Immutable Security Audit Logs"
+          >
+            <ShieldAlert className="h-4.5 w-4.5 shrink-0 text-rose-500" />
+            {!isCollapsed && <span>Audit Logs</span>}
+          </NavLink>
 
           {/* SYSTEM SETTING - Accordion */}
           {isSuper && !isCollapsed && (

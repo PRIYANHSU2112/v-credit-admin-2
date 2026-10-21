@@ -88,8 +88,8 @@ export default function DevicesPage() {
       render: (item) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-foreground text-xs">{item.brand} {item.modelName}</span>
-            <span className="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded">
+            <span className="font-bold text-foreground text-sm">{item.brand} {item.modelName}</span>
+            <span className="text-xs text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded">
               {item.appVersion}
             </span>
           </div>
@@ -105,10 +105,10 @@ export default function DevicesPage() {
       id: 'customer',
       header: 'Customer / Dealer',
       render: (item) => (
-        <div className="space-y-0.5 text-xs">
-          <p className="font-bold text-foreground">{item.customerName}</p>
-          <p className="text-muted-foreground">{maskPhone(item.customerPhone)}</p>
-          <p className="text-[10px] text-primary font-medium">{item.dealerName}</p>
+        <div className="space-y-0.5">
+          <p className="font-bold text-foreground text-sm">{item.customerName}</p>
+          <p className="text-xs text-muted-foreground font-mono">{maskPhone(item.customerPhone)}</p>
+          <p className="text-xs text-primary font-semibold">{item.dealerName}</p>
         </div>
       ),
     },
@@ -119,16 +119,16 @@ export default function DevicesPage() {
       render: (item) => (
         <div className="flex items-center gap-2">
           {item.networkState === 'online' ? (
-            <Badge variant="success" dot className="text-xs">
+            <Badge variant="success" dot className="text-xs font-semibold">
               Online
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs font-semibold">
               Offline
             </Badge>
           )}
-          <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
-            <Battery className="h-3 w-3 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground flex items-center gap-1.5 font-mono font-medium">
+            <Battery className="h-3.5 w-3.5 text-muted-foreground" />
             {item.batteryLevel}%
           </span>
         </div>
@@ -142,7 +142,7 @@ export default function DevicesPage() {
         <div className="space-y-1">
           <StatusBadge status={item.lockState} />
           {item.overdueDays > 0 && (
-            <p className="text-[10px] text-rose-500 font-bold">
+            <p className="text-xs text-rose-500 font-bold">
               {item.overdueDays} Days Overdue
             </p>
           )}
@@ -154,7 +154,7 @@ export default function DevicesPage() {
       header: 'Last Seen',
       sortable: true,
       render: (item) => (
-        <span className="text-xs text-muted-foreground font-mono">
+        <span className="text-sm text-muted-foreground font-mono">
           {formatDate(item.lastHeartbeat, true)}
         </span>
       ),

@@ -15,13 +15,19 @@ const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPag
 const AnalyticsPage = lazy(() => import('@/features/dashboard/pages/AnalyticsPage'))
 
 // Partner Hierarchy (User List)
-const PartnersPage = lazy(() => import('@/features/partners/pages/PartnersPage'))
+const StockistsPage = lazy(() => import('@/features/partners/pages/StockistsPage'))
 const DistributorsPage = lazy(() => import('@/features/partners/pages/DistributorsPage'))
 const DealersPage = lazy(() => import('@/features/partners/pages/DealersPage'))
 const EditDealerPage = lazy(() => import('@/features/partners/pages/EditDealerPage'))
 const UsersPage = lazy(() => import('@/features/customers/pages/UsersPage'))
 const PendingUsersPage = lazy(() => import('@/features/customers/pages/PendingUsersPage'))
 const UserSearchPage = lazy(() => import('@/features/customers/pages/UserSearchPage'))
+
+// Enterprise & Distribution Network
+const TerritoriesPage = lazy(() => import('@/features/partners/pages/TerritoriesPage'))
+const InventoryPage = lazy(() => import('@/features/keys/pages/InventoryPage'))
+const CommissionsPage = lazy(() => import('@/features/finance/pages/CommissionsPage'))
+const NotificationsPage = lazy(() => import('@/features/dashboard/pages/NotificationsPage'))
 
 // Device Control (EMI SAFE)
 const DeviceControlPage = lazy(() => import('@/features/devices/pages/DeviceControlPage'))
@@ -33,12 +39,16 @@ const KeysPage = lazy(() => import('@/features/keys/pages/KeysPage'))
 // Customers & Finance
 const CustomersPage = lazy(() => import('@/features/customers/pages/CustomersPage'))
 const LoansPage = lazy(() => import('@/features/loans/pages/LoansPage'))
+const EmiSafePage = lazy(() => import('@/features/emi/pages/EmiSafePage'))
 const DevicesPage = lazy(() => import('@/features/devices/pages/DevicesPage'))
 const FinancePage = lazy(() => import('@/features/finance/pages/FinancePage'))
 
 // Reports
 const DistributorLowKeyReportPage = lazy(
   () => import('@/features/reports/pages/DistributorLowKeyReportPage')
+)
+const StockistLowKeyReportPage = lazy(
+  () => import('@/features/reports/pages/StockistLowKeyReportPage')
 )
 const DealerLowKeyReportPage = lazy(
   () => import('@/features/reports/pages/DealerLowKeyReportPage')
@@ -119,8 +129,48 @@ export function AppRoutes() {
         {
           path: ROUTE_PATHS.PARTNERS,
           element: (
-            <SL msg="Loading partner network...">
-              <PartnersPage />
+            <SL msg="Loading stockists network...">
+              <StockistsPage />
+            </SL>
+          ),
+        },
+        {
+          path: ROUTE_PATHS.STOCKISTS,
+          element: (
+            <SL msg="Loading stockists network...">
+              <StockistsPage />
+            </SL>
+          ),
+        },
+        {
+          path: ROUTE_PATHS.TERRITORIES,
+          element: (
+            <SL msg="Loading territories...">
+              <TerritoriesPage />
+            </SL>
+          ),
+        },
+        {
+          path: ROUTE_PATHS.INVENTORY,
+          element: (
+            <SL msg="Loading inventory...">
+              <InventoryPage />
+            </SL>
+          ),
+        },
+        {
+          path: ROUTE_PATHS.COMMISSIONS,
+          element: (
+            <SL msg="Loading commissions...">
+              <CommissionsPage />
+            </SL>
+          ),
+        },
+        {
+          path: ROUTE_PATHS.NOTIFICATIONS,
+          element: (
+            <SL msg="Loading notifications...">
+              <NotificationsPage />
             </SL>
           ),
         },
@@ -208,6 +258,14 @@ export function AppRoutes() {
           ),
         },
         {
+          path: ROUTE_PATHS.EMI_SAFE,
+          element: (
+            <SL msg="Loading EMI Safe Console...">
+              <EmiSafePage />
+            </SL>
+          ),
+        },
+        {
           path: ROUTE_PATHS.LOANS,
           element: (
             <SL msg="Loading loans...">
@@ -243,6 +301,14 @@ export function AppRoutes() {
         {
           path: ROUTE_PATHS.REPORTS,
           element: <Navigate to={ROUTE_PATHS.REPORT_DISTRIBUTOR_LOW_KEY} replace />,
+        },
+        {
+          path: ROUTE_PATHS.REPORT_STOCKIST_LOW_KEY,
+          element: (
+            <SL msg="Loading stockist report...">
+              <StockistLowKeyReportPage />
+            </SL>
+          ),
         },
         {
           path: ROUTE_PATHS.REPORT_DISTRIBUTOR_LOW_KEY,

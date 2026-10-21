@@ -14,6 +14,10 @@ export const API_TAGS = {
   DEVICES: 'Devices',
   FINANCE: 'Finance',
   AUDIT: 'Audit',
+  TERRITORIES: 'Territories',
+  COMMISSIONS: 'Commissions',
+  NOTIFICATIONS: 'Notifications',
+  INVENTORY: 'Inventory',
 } as const
 
 export type ApiTagType = (typeof API_TAGS)[keyof typeof API_TAGS]

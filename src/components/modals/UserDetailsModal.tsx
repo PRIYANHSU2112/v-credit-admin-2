@@ -1,34 +1,48 @@
 import { Modal } from '@/components/ui/Modal'
-import type { EmiSafeUserRecord } from '@/mocks/mockSeedData'
+import type { EndUserRecord } from '@/features/customers/types'
 
 interface UserDetailsModalProps {
   isOpen: boolean
   onClose: () => void
-  user: EmiSafeUserRecord | null
+  user: EndUserRecord | null
 }
 
 export function UserDetailsModal({ isOpen, onClose, user }: UserDetailsModalProps) {
   if (!user) return null
 
   const detailsList = [
-    { label: 'Name', value: user.userName },
-    { label: 'Phone No', value: user.userPhone },
-    { label: 'Key Code', value: user.keyCode || 'VC-883920' },
-    { label: 'IMEI or Device Id', value: user.imei1 || '352839711277967' },
+    { label: 'Customer ID', value: user._id || user.customerId || user.id },
+    { label: 'Customer Name', value: user.customerName || user.userName || (user as any).name },
+    { label: 'Mobile Number', value: user.customerMobileNumber || user.userPhone || (user as any).phone },
+    { label: 'Email Address', value: user.email || '—' },
+    { label: 'Loan Reference', value: user.loanId || (user as any).loanStatus || '—' },
+    {
+      label: 'Brand & Model',
+      value:
+        (user as any).device ||
+        `${user.mobileBrand || ''} ${user.mobileModel || user.deviceName || user.userFeature || ''}`.trim() ||
+        '—',
+    },
+    { label: 'Primary IMEI (1)', value: (user as any).imei || user.imeiNumber1 || user.imei1 || '—' },
+    { label: 'Secondary IMEI (2)', value: user.imeiNumber2 || user.imei2 || '—' },
+    {
+      label: 'Lock Status',
+      value:
+        user.deviceUnlockStatus ||
+        (user.lockStatus === 'locked' ? 'LOCKED' : user.lockStatus === 'unlocked' ? 'UNLOCKED' : '—'),
+    },
+    { label: 'Loan Lifecycle Status', value: user.loanStatus || '—' },
+    { label: 'Bound License Key', value: (user as any).keyId || user.keyCode || '—' },
+    {
+      label: 'Dealer Retailer',
+      value: user.dealer ? `${user.dealer}${user.dealerPhone ? ` (${user.dealerPhone})` : ''}` : '—',
+    },
     {
       label: 'Device Agent',
-      value:
-        user.deviceAgent ||
-        'Device - INFINIX MOBILITY LIMITED Infinix X6512, Android Version - 11, SDK - 30',
+      value: user.deviceAgent || (user as any).device || '—',
     },
-    { label: 'GSF ID', value: user.gsfId || '4029182390' },
-    { label: 'Device ID', value: user.deviceId || '0' },
-    { label: 'Device Name', value: user.deviceName || user.userFeature || 'N/A' },
-    { label: 'Claimed', value: user.claimed || 'C' },
-    { label: 'Activation Date', value: user.activationDate },
-    { label: 'Enrollment Date', value: user.enrollmentDate || '14/10/2026 19:44:40' },
-    { label: 'Removed On', value: user.removedOn || '--' },
-    { label: 'Activated By', value: user.activatedBy || '3.0' },
+    { label: 'Activation Date', value: (user as any).activatedAt || user.activationDate || '—' },
+    { label: 'Enrollment Date', value: user.enrollmentDate || (user as any).activatedAt || '—' },
   ]
 
   return (

@@ -27,23 +27,40 @@ export default function EditDealerPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    const cleanedPhone = lockScreenNumber.replace(/\D/g, '')
+    if (cleanedPhone.length !== 10) {
+      toast.error('Lock screen / Contact phone must be exactly 10 digits.')
+      return
+    }
+
+    if (password && password.length < 6) {
+      toast.error('Password must be at least 6 characters.')
+      return
+    }
+
     setIsSaving(true)
 
     setTimeout(() => {
       setIsSaving(false)
       // Update in memory
       initialDealer.dealerName = dealerName
-      initialDealer.lockScreenNumber = lockScreenNumber
+      initialDealer.name = shop
+      initialDealer.lockScreenNumber = cleanedPhone
+      initialDealer.phone = cleanedPhone
       initialDealer.email = emailId
       initialDealer.dealerShop = shop
       initialDealer.password = password
       initialDealer.address = address
       initialDealer.city = city
       initialDealer.state = state
+      initialDealer.territory = state
       initialDealer.district = district
       initialDealer.pincode = pincode
 
-      toast.success(`Dealer details for "${shop}" saved successfully!`)
+      toast.success(`Dealer details for "${shop}" saved successfully!`, {
+        description: `Credentials and contact information updated for ${initialDealer.entityCode || initialDealer.dealerCode}.`,
+      })
       navigate(ROUTE_PATHS.DEALERS)
     }, 600)
   }
@@ -62,10 +79,10 @@ export default function EditDealerPage() {
           </button>
           <div>
             <h2 className="text-xl font-bold text-foreground tracking-tight">Edit Dealer Profile</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Modify retail shop information, login credentials, and contact details</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Modify retail shop information, login credentials, and contact details</p>
           </div>
         </div>
-        <span className="text-xs text-muted-foreground font-mono bg-muted px-2.5 py-1 rounded-lg border border-border">
+        <span className="text-sm text-muted-foreground font-mono bg-muted px-3 py-1.5 rounded-lg border border-border">
           Code: {initialDealer.dealerCode || '79746'}
         </span>
       </div>
@@ -76,57 +93,57 @@ export default function EditDealerPage() {
           {/* Left Column */}
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Dealer Name</label>
+              <label className="text-sm font-semibold text-foreground">Dealer Name</label>
               <input
                 type="text"
                 value={dealerName}
                 onChange={(e) => setDealerName(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Lock Screen Number</label>
+              <label className="text-sm font-semibold text-foreground">Lock Screen Number</label>
               <input
                 type="text"
                 value={lockScreenNumber}
                 onChange={(e) => setLockScreenNumber(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Email Id</label>
+              <label className="text-sm font-semibold text-foreground">Email Id</label>
               <input
                 type="email"
                 value={emailId}
                 onChange={(e) => setEmailId(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Shop Name</label>
+              <label className="text-sm font-semibold text-foreground">Shop Name</label>
               <input
                 type="text"
                 value={shop}
                 onChange={(e) => setShop(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-bold"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-bold"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Portal Password</label>
+              <label className="text-sm font-semibold text-foreground">Portal Password</label>
               <input
                 type="text"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
           </div>
@@ -134,57 +151,57 @@ export default function EditDealerPage() {
           {/* Right Column */}
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Address</label>
+              <label className="text-sm font-semibold text-foreground">Address</label>
               <textarea
                 rows={3}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 required
-                className="w-full rounded-lg border border-border p-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
+                className="w-full rounded-lg border border-border p-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">City</label>
+              <label className="text-sm font-semibold text-foreground">City</label>
               <input
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">State</label>
+              <label className="text-sm font-semibold text-foreground">State</label>
               <input
                 type="text"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">District</label>
+              <label className="text-sm font-semibold text-foreground">District</label>
               <input
                 type="text"
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Pincode</label>
+              <label className="text-sm font-semibold text-foreground">Pincode</label>
               <input
                 type="text"
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value)}
                 required
-                className="w-full h-10 rounded-lg border border-border px-3 text-xs text-foreground bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full h-10 rounded-lg border border-border px-3 text-sm text-foreground bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
           </div>
@@ -195,14 +212,14 @@ export default function EditDealerPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="btn-action-primary text-xs font-bold h-10 px-8 shadow-xs disabled:opacity-50"
+            className="btn-action-primary text-sm font-bold h-10 px-8 shadow-xs disabled:opacity-50"
           >
             {isSaving ? 'Saving Changes...' : 'Save Changes'}
           </button>
           <button
             type="button"
             onClick={() => navigate(ROUTE_PATHS.DEALERS)}
-            className="px-5 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="px-5 py-2 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             Cancel
           </button>

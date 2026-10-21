@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import {
   CheckCircle2,
+  Lock,
+  Unlock,
+  AlertCircle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
@@ -19,10 +22,11 @@ import { toast } from 'sonner'
 export default function LoansPage() {
   const { user } = useAppSelector((state) => state.auth)
   const canPay = hasPermission(user?.role, 'loans:pay')
+  const canLock = hasPermission(user?.role, 'devices:command:lock')
 
   const [loans, setLoans] = useState<LoanAccount[]>(MOCK_LOANS)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [deviceFilter, setDeviceFilter] = useState('all')
 
   // Payment modal state
   const [paymentLoan, setPaymentLoan] = useState<LoanAccount | null>(null)
@@ -32,24 +36,79 @@ export default function LoansPage() {
 
   const filteredLoans = useMemo(() => {
     return loans.filter((l) => {
+      const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
-        searchQuery.trim() === '' ||
-        l.loanNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.customerPhone.includes(searchQuery) ||
-        l.imei.includes(searchQuery) ||
-        l.deviceModel.toLowerCase().includes(searchQuery.toLowerCase())
+        q === '' ||
+        l.loanNumber.toLowerCase().includes(q) ||
+        l.customerName.toLowerCase().includes(q) ||
+        l.customerPhone.includes(q) ||
+        l.imei.includes(q) ||
+        (l.mobileBrand && l.mobileBrand.toLowerCase().includes(q)) ||
+        l.deviceModel.toLowerCase().includes(q)
 
-      const matchesStatus = statusFilter === 'all' || l.status === statusFilter
+      let matchesFilter = true
+      if (deviceFilter === 'running') {
+        matchesFilter = l.installationType === 'Old/Running Phone' || l.status === 'current'
+      } else if (deviceFilter === 'new') {
+        matchesFilter = l.installationType === 'New Phone'
+      } else if (deviceFilter === 'locked') {
+        matchesFilter = l.deviceUnlockStatus === 'LOCKED' || l.status === 'overdue'
+      } else if (deviceFilter === 'unlocked') {
+        matchesFilter = l.deviceUnlockStatus === 'UNLOCKED'
+      } else if (deviceFilter === 'settled') {
+        matchesFilter = l.loanStatus === 'CLOSED' || l.status === 'settled'
+      }
 
-      return matchesSearch && matchesStatus
+      return matchesSearch && matchesFilter
     })
-  }, [loans, searchQuery, statusFilter])
+  }, [loans, searchQuery, deviceFilter])
 
   const handleOpenPayment = (loan: LoanAccount) => {
     setPaymentLoan(loan)
     setPaymentAmount(String(loan.monthlyEmi))
     setTxnRef(`UPI-${Date.now().toString().slice(-6)}`)
+  }
+
+  const handleToggleLock = (loan: LoanAccount) => {
+    const isCurrentlyLocked = loan.deviceUnlockStatus === 'LOCKED'
+    const newUnlockState = isCurrentlyLocked ? 'UNLOCKED' : 'LOCKED'
+
+    setLoans(
+      loans.map((l) =>
+        l.id === loan.id
+          ? {
+              ...l,
+              deviceUnlockStatus: newUnlockState,
+            }
+          : l
+      )
+    )
+
+    if (newUnlockState === 'LOCKED') {
+      toast.error(`Remote LOCK signal broadcast to ${loan.customerName}'s phone (${loan.imei})`, {
+        description: 'MDM overlay activated. Phone features restricted until repayment.',
+      })
+    } else {
+      toast.success(`Remote UNLOCK signal dispatched to ${loan.customerName}'s device!`)
+    }
+  }
+
+  const handleMarkBounce = (loan: LoanAccount) => {
+    setLoans(
+      loans.map((l) =>
+        l.id === loan.id
+          ? {
+              ...l,
+              status: 'overdue',
+              deviceUnlockStatus: 'LOCKED',
+              overdueDays: Math.max(l.overdueDays, 1) + 7,
+            }
+          : l
+      )
+    )
+    toast.error(`Auto-debit / NACH failure marked for ${loan.customerName}!`, {
+      description: '₹400 bounce charge applied. Device lock command queued.',
+    })
   }
 
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
@@ -66,6 +125,7 @@ export default function LoansPage() {
               ...l,
               paidEmis: updatedPaid,
               status: isNowSettled ? 'settled' : 'current',
+              deviceUnlockStatus: isNowSettled ? 'UNLOCKED' : l.deviceUnlockStatus,
               overdueDays: 0,
             }
           : l
@@ -87,13 +147,20 @@ export default function LoansPage() {
       render: (item) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-xs text-foreground">
+            <span className="font-mono font-bold text-sm text-foreground">
               {item.loanNumber}
             </span>
-            <span className="text-[10px] text-muted-foreground">({item.dealerName})</span>
+            <span className="text-xs text-muted-foreground font-medium">({item.dealerName})</span>
           </div>
-          <p className="text-xs text-foreground font-semibold">{item.deviceModel}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">IMEI: {maskImei(item.imei)}</p>
+          <p className="text-sm text-foreground font-semibold flex items-center gap-1.5">
+            <span>{item.deviceModel}</span>
+            {item.installationType && (
+              <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                {item.installationType}
+              </span>
+            )}
+          </p>
+          <p className="font-mono text-xs text-muted-foreground">IMEI: {maskImei(item.imei)}</p>
         </div>
       ),
     },
@@ -102,9 +169,9 @@ export default function LoansPage() {
       header: 'Borrower',
       sortable: true,
       render: (item) => (
-        <div className="space-y-0.5 text-xs">
-          <p className="font-bold text-foreground">{item.customerName}</p>
-          <p className="text-muted-foreground">{maskPhone(item.customerPhone)}</p>
+        <div className="space-y-0.5">
+          <p className="font-bold text-foreground text-sm">{item.customerName}</p>
+          <p className="text-xs text-muted-foreground font-mono">{maskPhone(item.customerPhone)}</p>
         </div>
       ),
     },
@@ -113,11 +180,11 @@ export default function LoansPage() {
       header: 'Loan / EMI',
       sortable: true,
       render: (item) => (
-        <div className="space-y-0.5 text-xs">
-          <span className="font-bold text-foreground font-mono">
+        <div className="space-y-0.5">
+          <span className="font-bold text-foreground font-mono text-sm">
             {formatCurrency(item.totalLoanAmount)}
           </span>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground font-medium">
             EMI: {formatCurrency(item.monthlyEmi)}/mo
           </p>
         </div>
@@ -129,14 +196,14 @@ export default function LoansPage() {
       render: (item) => {
         const pct = Math.round((item.paidEmis / item.totalEmis) * 100)
         return (
-          <div className="space-y-1.5 w-32">
-            <div className="flex items-center justify-between text-[11px]">
+          <div className="space-y-1.5 w-36">
+            <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-foreground">
                 {item.paidEmis}/{item.totalEmis} Paid
               </span>
-              <span className="text-muted-foreground">{pct}%</span>
+              <span className="text-muted-foreground font-semibold">{pct}%</span>
             </div>
-            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 rounded-full ${
                   item.status === 'overdue' ? 'bg-rose-500' : 'bg-primary'
@@ -153,18 +220,41 @@ export default function LoansPage() {
       header: 'Next Due Date',
       sortable: true,
       render: (item) => (
-        <div className="space-y-0.5 text-xs">
-          <span className="text-foreground font-medium">
+        <div className="space-y-0.5">
+          <span className="text-foreground font-medium text-sm">
             {formatDate(item.nextDueDate)}
           </span>
           {item.overdueDays > 0 ? (
-            <p className="text-[10px] text-rose-500 font-bold">
+            <p className="text-xs text-rose-500 font-bold">
               {item.overdueDays}d Overdue
             </p>
           ) : (
-            <p className="text-[10px] text-emerald-500 font-medium">On Schedule</p>
+            <p className="text-xs text-emerald-500 font-medium">On Schedule</p>
           )}
         </div>
+      ),
+    },
+    {
+      id: 'lockStatus',
+      header: 'Device Lock',
+      render: (item) => (
+        <span
+          className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
+            item.deviceUnlockStatus === 'LOCKED'
+              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+          }`}
+        >
+          {item.deviceUnlockStatus === 'LOCKED' ? (
+            <>
+              <Lock className="h-3.5 w-3.5" /> LOCKED
+            </>
+          ) : (
+            <>
+              <Unlock className="h-3.5 w-3.5" /> UNLOCKED
+            </>
+          )}
+        </span>
       ),
     },
     {
@@ -192,6 +282,40 @@ export default function LoansPage() {
               Collect EMI
             </Button>
           )}
+          {item.status !== 'settled' && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleMarkBounce(item)
+              }}
+              className="p-1 rounded text-rose-500 hover:bg-rose-500/10 transition-colors"
+              title="Mark Auto-Debit / NACH Bounce (Apply ₹400 penalty)"
+            >
+              <AlertCircle className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {canLock && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggleLock(item)
+              }}
+              className={`p-1 rounded transition-colors ${
+                item.deviceUnlockStatus === 'LOCKED'
+                  ? 'text-emerald-500 hover:bg-emerald-500/10'
+                  : 'text-rose-500 hover:bg-rose-500/10'
+              }`}
+              title={item.deviceUnlockStatus === 'LOCKED' ? 'Remote Unlock' : 'Remote Lock'}
+            >
+              {item.deviceUnlockStatus === 'LOCKED' ? (
+                <Unlock className="h-3.5 w-3.5" />
+              ) : (
+                <Lock className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
           {item.status === 'settled' && (
             <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Settled
@@ -212,23 +336,25 @@ export default function LoansPage() {
       <FilterBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search loan #, customer, phone, IMEI..."
+        searchPlaceholder="Search loan #, customer, phone, IMEI, brand..."
         selectFilters={[
           {
-            id: 'status',
-            label: 'Loan Status',
-            value: statusFilter,
-            onChange: setStatusFilter,
+            id: 'deviceCategory',
+            label: 'Filter Category',
+            value: deviceFilter,
+            onChange: setDeviceFilter,
             options: [
-              { label: 'On Track (Current)', value: 'current' },
-              { label: 'Overdue EMI', value: 'overdue' },
-              { label: 'Fully Settled', value: 'settled' },
+              { label: 'Running Devices (active loans)', value: 'running' },
+              { label: 'New Devices (originated)', value: 'new' },
+              { label: 'Locked Devices (overdue/locked)', value: 'locked' },
+              { label: 'Unlocked Devices', value: 'unlocked' },
+              { label: 'Fully Settled / Closed', value: 'settled' },
             ],
           },
         ]}
         onReset={() => {
           setSearchQuery('')
-          setStatusFilter('all')
+          setDeviceFilter('all')
         }}
       />
 

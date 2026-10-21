@@ -5,64 +5,84 @@
 @layer base {
   :root {
     /* ─── BASE SURFACES (LIGHT MODE) ───────────────────────── */
-    --background: 210 20% 98%;          /* Ultra-crisp slate #f8fafc */
-    --foreground: 222 47% 11%;          /* Slate 900 #0f172a */
-    --card: 0 0% 100%;                  /* Crisp white #ffffff */
+    --background: 210 20% 98%;
+    /* Ultra-crisp slate #f8fafc */
+    --foreground: 222 47% 11%;
+    /* Slate 900 #0f172a */
+    --card: 0 0% 100%;
+    /* Crisp white #ffffff */
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --secondary: 210 40% 96%;           /* #f1f5f9 */
+    --secondary: 210 40% 96%;
+    /* #f1f5f9 */
     --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;    /* #64748b */
+    --muted-foreground: 215 16% 47%;
+    /* #64748b */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 91%;              /* Clean subtle border #e2e8f0 */
+    --border: 214 32% 91%;
+    /* Clean subtle border #e2e8f0 */
     --input: 214 32% 91%;
     --radius: 0.875rem;
 
     /* ─── DEFAULT THEME ACCENT: EMERALD V-CREDIT (LOGO COLORS) ─ */
-    --primary: 158 82% 38%;             /* Rich Emerald #059669 */
+    --primary: 158 82% 38%;
+    /* Rich Emerald #059669 */
     --primary-foreground: 0 0% 100%;
     --ring: 158 82% 38%;
-    --accent: 84 81% 44%;               /* Lime Neon Accent #84cc16 */
+    --accent: 84 81% 44%;
+    /* Lime Neon Accent #84cc16 */
     --accent-foreground: 160 84% 15%;
-    --brand-forest: 165 80% 12%;        /* Deep Forest #064e3b */
+    --brand-forest: 165 80% 12%;
+    /* Deep Forest #064e3b */
 
     /* Chart Palettes (Light) */
-    --chart-1: 158 82% 38%;             /* Emerald */
-    --chart-2: 84 81% 44%;              /* Lime Neon */
-    --chart-3: 198 93% 60%;             /* Cyan */
-    --chart-4: 221 83% 53%;             /* Blue */
-    --chart-5: 38 92% 50%;              /* Amber */
+    --chart-1: 158 82% 38%;
+    /* Emerald */
+    --chart-2: 84 81% 44%;
+    /* Lime Neon */
+    --chart-3: 198 93% 60%;
+    /* Cyan */
+    --chart-4: 221 83% 53%;
+    /* Blue */
+    --chart-5: 38 92% 50%;
+    /* Amber */
   }
 
   /* ─── SAPPHIRE BLUE ACCENT THEME (LIGHT) ───────────────── */
   [data-theme="sapphire"] {
-    --primary: 221 83% 53%;             /* Royal Sapphire #2563eb */
+    --primary: 221 83% 53%;
+    /* Royal Sapphire #2563eb */
     --primary-foreground: 0 0% 100%;
     --ring: 221 83% 53%;
-    --accent: 198 93% 60%;              /* Sky Cyan #38bdf8 */
+    --accent: 198 93% 60%;
+    /* Sky Cyan #38bdf8 */
     --accent-foreground: 222 47% 11%;
     --brand-forest: 224 64% 20%;
   }
 
   /* ─── ROYAL VIOLET ACCENT THEME (LIGHT) ────────────────── */
   [data-theme="violet"] {
-    --primary: 262 83% 58%;             /* Royal Violet #7c3aed */
+    --primary: 262 83% 58%;
+    /* Royal Violet #7c3aed */
     --primary-foreground: 0 0% 100%;
     --ring: 262 83% 58%;
-    --accent: 292 84% 61%;              /* Orchid #c026d3 */
+    --accent: 292 84% 61%;
+    /* Orchid #c026d3 */
     --accent-foreground: 0 0% 100%;
     --brand-forest: 265 60% 20%;
   }
 
   /* ─── CYBER TEAL ACCENT THEME (LIGHT) ──────────────────── */
   [data-theme="teal"] {
-    --primary: 173 80% 40%;             /* Dark Teal #0d9488 */
+    --primary: 173 80% 40%;
+    /* Dark Teal #0d9488 */
     --primary-foreground: 0 0% 100%;
     --ring: 173 80% 40%;
-    --accent: 162 73% 46%;              /* Mint #10b981 */
+    --accent: 162 73% 46%;
+    /* Mint #10b981 */
     --accent-foreground: 175 84% 12%;
     --brand-forest: 175 80% 15%;
   }
@@ -70,26 +90,35 @@
   /* ─── DARK MODE (OBSIDIAN EMERALD ENTERPRISE) ───────────── */
   .dark {
     color-scheme: dark;
-    --background: 165 30% 6%;           /* Deep obsidian forest #09100d */
-    --foreground: 150 20% 98%;          /* #f8fafc */
-    --card: 165 24% 10%;                /* Elevated dark glass surface #101b16 */
+    --background: 165 30% 6%;
+    /* Deep obsidian forest #09100d */
+    --foreground: 150 20% 98%;
+    /* #f8fafc */
+    --card: 165 24% 10%;
+    /* Elevated dark glass surface #101b16 */
     --card-foreground: 150 20% 96%;
     --popover: 165 24% 11%;
     --popover-foreground: 150 20% 98%;
-    --secondary: 165 20% 15%;           /* #182821 */
+    --secondary: 165 20% 15%;
+    /* #182821 */
     --secondary-foreground: 150 20% 95%;
-    --muted: 165 20% 14%;               /* #16251e */
-    --muted-foreground: 150 15% 65%;    /* #92a49b */
+    --muted: 165 20% 14%;
+    /* #16251e */
+    --muted-foreground: 150 15% 65%;
+    /* #92a49b */
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 165 20% 18%;              /* Subtle emerald tinted border #1e332a */
+    --border: 165 20% 18%;
+    /* Subtle emerald tinted border #1e332a */
     --input: 165 20% 18%;
 
     /* Default Theme Accent (Dark Emerald V-Credit) */
-    --primary: 160 70% 48%;             /* Glowing Mint Emerald #10b981 */
+    --primary: 160 70% 48%;
+    /* Glowing Mint Emerald #10b981 */
     --primary-foreground: 165 80% 6%;
     --ring: 160 70% 48%;
-    --accent: 84 81% 55%;               /* Neon Lime Accent #a3e635 */
+    --accent: 84 81% 55%;
+    /* Neon Lime Accent #a3e635 */
     --accent-foreground: 165 80% 6%;
     --brand-forest: 165 80% 10%;
 
@@ -102,10 +131,21 @@
   }
 
   /* Crisp Typography: Solid deep black in light mode, theme-colored in dark mode */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: #0f172a;
   }
-  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
     color: hsl(var(--foreground));
   }
 
@@ -115,30 +155,34 @@
     cursor: pointer;
     opacity: 0.9;
   }
+
   .dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
   }
+
   input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
 
   /* Light mode form inputs: crisp borders, clear definition */
-  :root:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([readonly]), 
-  :root:not(.dark) select, 
+  :root:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([readonly]),
+  :root:not(.dark) select,
   :root:not(.dark) textarea {
     border-color: #cbd5e1;
     background-color: #ffffff;
     color: #0f172a;
   }
-  :root:not(.dark) input:focus, 
-  :root:not(.dark) select:focus, 
+
+  :root:not(.dark) input:focus,
+  :root:not(.dark) select:focus,
   :root:not(.dark) textarea:focus {
     border-color: hsl(var(--primary));
     box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
   }
 
   .dark[data-theme="sapphire"] {
-    --primary: 217 91% 60%;             /* Vibrant Blue #3b82f6 */
+    --primary: 217 91% 60%;
+    /* Vibrant Blue #3b82f6 */
     --primary-foreground: 222 47% 11%;
     --ring: 217 91% 60%;
     --accent: 199 89% 55%;
@@ -146,7 +190,8 @@
   }
 
   .dark[data-theme="violet"] {
-    --primary: 263 70% 66%;             /* Vibrant Violet #8b5cf6 */
+    --primary: 263 70% 66%;
+    /* Vibrant Violet #8b5cf6 */
     --primary-foreground: 222 47% 11%;
     --ring: 263 70% 66%;
     --accent: 280 67% 68%;
@@ -154,7 +199,8 @@
   }
 
   .dark[data-theme="teal"] {
-    --primary: 172 66% 50%;             /* Cyan Teal #14b8a6 */
+    --primary: 172 66% 50%;
+    /* Cyan Teal #14b8a6 */
     --primary-foreground: 175 84% 10%;
     --ring: 172 66% 50%;
     --accent: 158 64% 52%;
@@ -167,7 +213,7 @@
 /* Deep Emerald Silk Wave Background for Login / Splash (Matching Logo) */
 .bg-emerald-waves {
   background-color: #04180e;
-  background-image: 
+  background-image:
     radial-gradient(circle at 50% 15%, rgba(34, 197, 94, 0.28) 0%, transparent 60%),
     radial-gradient(circle at 15% 85%, rgba(5, 75, 35, 0.5) 0%, transparent 50%),
     radial-gradient(circle at 85% 75%, rgba(132, 204, 22, 0.22) 0%, transparent 55%),
@@ -181,7 +227,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(132, 204, 22, 0.15), transparent 70%),
     radial-gradient(ellipse 60% 40% at 80% 90%, rgba(16, 185, 129, 0.12), transparent 60%);
   pointer-events: none;
@@ -191,7 +237,7 @@
 
 /* Luminous White-to-Green Gradient Background */
 .bg-login-white-green {
-  background: 
+  background:
     radial-gradient(circle at 15% 15%, rgba(167, 243, 208, 0.45) 0%, transparent 45%),
     radial-gradient(circle at 85% 12%, rgba(110, 231, 183, 0.4) 0%, transparent 40%),
     radial-gradient(circle at 50% 88%, rgba(52, 211, 153, 0.3) 0%, transparent 50%),
@@ -202,7 +248,7 @@
 }
 
 .dark .bg-login-white-green {
-  background: 
+  background:
     radial-gradient(circle at 20% 15%, rgba(16, 185, 129, 0.22) 0%, transparent 50%),
     radial-gradient(circle at 85% 20%, rgba(5, 150, 105, 0.2) 0%, transparent 45%),
     radial-gradient(circle at 50% 90%, rgba(4, 120, 87, 0.25) 0%, transparent 55%),
@@ -214,16 +260,14 @@
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(
-    circle at 32% 32%,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(209, 250, 229, 0.6) 25%,
-    rgba(110, 231, 183, 0.4) 50%,
-    rgba(16, 185, 129, 0.28) 75%,
-    rgba(5, 150, 105, 0.35) 100%
-  );
+  background: radial-gradient(circle at 32% 32%,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(209, 250, 229, 0.6) 25%,
+      rgba(110, 231, 183, 0.4) 50%,
+      rgba(16, 185, 129, 0.28) 75%,
+      rgba(5, 150, 105, 0.35) 100%);
   border: 1.5px solid rgba(110, 231, 183, 0.65);
-  box-shadow: 
+  box-shadow:
     inset -3px -3px 8px rgba(16, 185, 129, 0.25),
     inset 3px 3px 6px rgba(255, 255, 255, 0.95),
     0 8px 24px rgba(16, 185, 129, 0.16);
@@ -235,15 +279,13 @@
 }
 
 .dark .floating-bubble {
-  background: radial-gradient(
-    circle at 32% 32%,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(52, 211, 153, 0.35) 30%,
-    rgba(16, 185, 129, 0.25) 60%,
-    rgba(4, 120, 87, 0.35) 100%
-  );
+  background: radial-gradient(circle at 32% 32%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(52, 211, 153, 0.35) 30%,
+      rgba(16, 185, 129, 0.25) 60%,
+      rgba(4, 120, 87, 0.35) 100%);
   border: 1.5px solid rgba(52, 211, 153, 0.5);
-  box-shadow: 
+  box-shadow:
     inset -3px -3px 8px rgba(5, 150, 105, 0.4),
     inset 3px 3px 6px rgba(255, 255, 255, 0.6),
     0 8px 24px rgba(5, 150, 105, 0.3);
@@ -266,19 +308,24 @@
     transform: translateY(105vh) translateX(0) scale(0.7);
     opacity: 0;
   }
+
   8% {
     opacity: 0.85;
   }
+
   50% {
     transform: translateY(50vh) translateX(18px) scale(1);
     opacity: 0.95;
   }
+
   75% {
     transform: translateY(25vh) translateX(-14px) scale(1.05);
   }
+
   90% {
     opacity: 0.85;
   }
+
   100% {
     transform: translateY(-15vh) translateX(10px) scale(1.15);
     opacity: 0;
@@ -294,19 +341,24 @@
     transform: translateY(105vh) translateX(0) scale(0.65);
     opacity: 0;
   }
+
   8% {
     opacity: 0.8;
   }
+
   35% {
     transform: translateY(68vh) translateX(-22px) scale(0.9);
   }
+
   70% {
     transform: translateY(30vh) translateX(20px) scale(1.05);
     opacity: 0.9;
   }
+
   90% {
     opacity: 0.75;
   }
+
   100% {
     transform: translateY(-15vh) translateX(-12px) scale(1.1);
     opacity: 0;
@@ -368,9 +420,9 @@
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-weight: 600;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1.125rem;
-  font-size: 0.8125rem;
+  border-radius: 0.625rem;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
@@ -392,9 +444,9 @@
   background-color: #059669;
   color: #ffffff;
   font-weight: 600;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1.125rem;
-  font-size: 0.8125rem;
+  border-radius: 0.625rem;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
   transition: all 0.15s ease-in-out;
   display: inline-flex;
   align-items: center;
@@ -445,30 +497,50 @@
 /* Enterprise Data Table */
 .enterprise-table {
   width: 100%;
+  min-width: 1080px;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .enterprise-table th,
 .figma-table th {
-  background-color: hsl(var(--muted) / 0.6);
+  background-color: hsl(var(--muted) / 0.7);
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.875rem 1rem;
+  letter-spacing: 0.06em;
+  padding: 0.95rem 1.125rem;
   border-bottom: 1px solid hsl(var(--border));
   white-space: nowrap;
 }
 
 .enterprise-table td,
 .figma-table td {
-  padding: 0.875rem 1rem;
-  font-size: 0.8125rem;
+  padding: 0.95rem 1.125rem;
+  font-size: 0.875rem;
   color: hsl(var(--foreground));
   border-bottom: 1px solid hsl(var(--border) / 0.6);
   transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+/* Ensure cell content within enterprise tables is crisp and never microscopic */
+.enterprise-table td .text-\[9px\],
+.enterprise-table td .text-\[10px\],
+.enterprise-table td .text-\[11px\] {
+  font-size: 0.8rem;
+  line-height: 1.25rem;
+}
+
+.enterprise-table td .text-xs {
+  font-size: 0.84rem;
+  line-height: 1.25rem;
+}
+
+.enterprise-table td.cell-wrap,
+.enterprise-table th.cell-wrap {
+  white-space: normal;
 }
 
 .enterprise-table tr:hover td,
@@ -487,6 +559,7 @@
   transition: all 0.15s ease;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
 }
+
 .btn-control-lock:hover {
   background-color: #dc2626;
   transform: translateY(-1px);
@@ -502,6 +575,7 @@
   transition: all 0.15s ease;
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
 }
+
 .btn-control-unlock:hover {
   background-color: #059669;
   transform: translateY(-1px);
@@ -517,6 +591,7 @@
   transition: all 0.15s ease;
   box-shadow: 0 2px 6px hsl(var(--primary) / 0.25);
 }
+
 .btn-control-cyan:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
@@ -527,13 +602,50 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.25);
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.45);
+}
+
+/* ─── UNIVERSAL TEXT SELECTION & COPY SUPPORT ───────────────── */
+::selection {
+  background-color: hsl(var(--primary) / 0.28);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: hsl(var(--primary) / 0.28);
+  color: inherit;
+}
+
+/* Ensure data tables, cells, cards, values, tokens, and textual content are always selectable */
+table,
+thead,
+tbody,
+tr,
+th,
+td,
+p,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+code,
+pre,
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }

@@ -1,235 +1,507 @@
-import { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import {
+  Calendar,
+  TrendingUp,
+  Users,
+  Key,
+  Building2,
+  Store,
+} from 'lucide-react'
+import { useAppSelector } from '@/app/store/hooks'
+import { useGetDashboardQuery } from '@/features/enterprise/api/enterpriseApi'
 import { toast } from 'sonner'
-import { Calendar, TrendingUp, Users, Key } from 'lucide-react'
+import type { UserRole } from '@/types/user'
 
-// Mock data for Super Analytics page
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const YEARS = ['2021', '2022', '2023', '2024', '2025', '2026']
+const YEARS = ['2023', '2024', '2025', '2026']
 
-// Daily chart data generator
-const generateDayData = (total: number) =>
-  Array.from({ length: 31 }, (_, i) => ({
-    day: String(i + 1).padStart(2, '0'),
-    value: Math.random() < 0.3 ? 0 : Math.floor(Math.random() * (total / 10)) + 1,
-  }))
+// Generate 31-day telemetry series with seed
+function generateDayData(total: number, seedMultiplier: number = 1) {
+  const baseAvg = Math.max(1, Math.round(total / 24))
+  return Array.from({ length: 31 }, (_, i) => {
+    const dayNum = i + 1
+    // Deterministic pseudo-random variation based on day and seed
+    const variance = Math.sin(dayNum * 1.5 + seedMultiplier) * 0.4 + 0.6
+    const isWeekend = dayNum % 7 === 0 || dayNum % 7 === 6
+    const weekendFactor = isWeekend ? 0.7 : 1.15
+    const val = Math.max(0, Math.round(baseAvg * variance * weekendFactor))
+    return {
+      day: String(dayNum).padStart(2, '0'),
+      value: val,
+    }
+  })
+}
 
-export default function AnalyticsPage() {
-  const [usersYear, setUsersYear] = useState('2026')
-  const [usersMonth, setUsersMonth] = useState('October')
-  const [salesYear, setSalesYear] = useState('2026')
-  const [salesMonth, setSalesMonth] = useState('August')
+interface DailyBarChartProps {
+  title: string
+  subtitle: string
+  badgeLabel: string
+  badgeIcon: React.ElementType
+  badgeColorClass: string
+  gradientFromTo: string
+  legendLabel: string
+  year: string
+  setYear: (y: string) => void
+  month: string
+  setMonth: (m: string) => void
+  total: number
+  unit: string
+  seed: number
+}
 
-  const [userData] = useState(generateDayData(46))
-  const [salesData] = useState(generateDayData(500))
-
-  const totalUsers = 46
-  const totalSales = 500
-
-  const maxUserValue = Math.max(...userData.map((d) => d.value), 5)
-  const maxSalesValue = Math.max(...salesData.map((d) => d.value), 500)
+function DailyBarChart({
+  title,
+  subtitle,
+  badgeLabel,
+  badgeIcon: BadgeIcon,
+  badgeColorClass,
+  gradientFromTo,
+  legendLabel,
+  year,
+  setYear,
+  month,
+  setMonth,
+  total,
+  unit,
+  seed,
+}: DailyBarChartProps) {
+  const dayData = useMemo(() => generateDayData(total, seed), [total, seed])
+  const maxValue = Math.max(...dayData.map((d) => d.value), 5)
 
   return (
-    <div className="space-y-6 bg-card p-6 sm:p-8 rounded-3xl shadow-xs border border-border select-none">
-      {/* Title */}
-      <div className="pb-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="border border-border/80 rounded-2xl p-5 space-y-4 bg-card/60 backdrop-blur-xs shadow-xs transition-all hover:border-border">
+      {/* Chart Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pb-1">
         <div>
-          <h2 className="text-xl sm:text-2xl font-display font-black text-foreground tracking-tight">
-            Super Analytics & Insights
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time daily telemetry of borrower device activations and license inventory distribution
-          </p>
+          <h3 className="font-bold text-sm text-foreground">{title}</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary">
-            <TrendingUp className="h-4 w-4" />
-            <span>Telemetry Active</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Year selector */}
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <select
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            >
+              {YEARS.map((y) => (
+                <option key={y} value={y} className="bg-popover text-foreground">
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Month selector */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            >
+              {MONTHS.map((m) => (
+                <option key={m} value={m} className="bg-popover text-foreground">
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => toast.info(`Filtered ${title} for ${month} ${year}`)}
+            className="btn-action-primary text-xs font-bold h-8 px-3"
+          >
+            Search
+          </button>
+
+          {/* KPI Badge */}
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs border ${badgeColorClass}`}>
+            <BadgeIcon className="h-3.5 w-3.5" />
+            <span>{badgeLabel}</span>
           </div>
         </div>
       </div>
 
-      {/* Two Charts Grid */}
+      {/* Bar Chart Presentation */}
+      <div className="relative pt-2">
+        <div className="text-[11px] font-semibold text-muted-foreground text-center mb-3 flex items-center justify-center gap-2">
+          <span className={`inline-block w-3.5 h-2 rounded bg-gradient-to-r ${gradientFromTo}`} />
+          <span>{legendLabel}</span>
+        </div>
+
+        <div className="overflow-x-auto pb-2">
+          <div
+            className="flex items-end gap-1.5 h-48 min-w-max px-3 pt-6 border-b border-border"
+            style={{ minWidth: '500px' }}
+          >
+            {dayData.map((d) => {
+              const barH = d.value === 0 ? 3 : Math.max(10, (d.value / maxValue) * 150)
+              return (
+                <div key={d.day} className="flex flex-col items-center gap-1.5 group cursor-pointer">
+                  <div
+                    className={`rounded-t-md transition-all duration-300 bg-gradient-to-t ${gradientFromTo} group-hover:brightness-110 group-hover:scale-y-105 shadow-xs`}
+                    style={{
+                      width: '11px',
+                      height: `${barH}px`,
+                    }}
+                    title={`Day ${d.day}: ${d.value} ${unit}`}
+                  />
+                  <span className="text-[9px] font-mono text-muted-foreground group-hover:text-foreground">
+                    {d.day}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Y-axis indicator values */}
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 px-1 font-mono">
+          <span>0 (Min)</span>
+          <span>{Math.round(maxValue / 2)} (Average)</span>
+          <span>{maxValue} (Peak Daily {unit})</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function AnalyticsPage() {
+  const { user } = useAppSelector((state) => state.auth)
+  const role: UserRole = user?.role || 'super_admin'
+
+  const { data: dashboardRes } = useGetDashboardQuery()
+  const liveKpis = dashboardRes?.data?.kpis
+
+  // Dynamic Multi-Level Scoped Metrics based on active Role
+  const scopedData = useMemo(() => {
+    switch (role) {
+      case 'super_admin':
+        return {
+          roleTitle: 'Super Admin',
+          scopeBadge: 'Global Master Access (All Tiers Visible)',
+          stockistsCount: liveKpis?.stockists || 3,
+          distributorsCount: liveKpis?.distributors || 2,
+          dealersCount: liveKpis?.dealers || 5,
+          usersCount: liveKpis?.users || 46,
+          totalKeys: liveKpis?.totalKeys || 8500,
+          transferredKeys: liveKpis?.transferredKeys || 1500,
+          // Graph Daily Totals
+          stockistKeysDayTotal: 1000,
+          distributorKeysDayTotal: 350,
+          dealerKeysDayTotal: 180,
+          usersDayTotal: 46,
+          keysDayTotal: 500,
+        }
+      case 'stockist':
+        return {
+          roleTitle: `Stockist (${user?.name || 'Regional Hub'})`,
+          scopeBadge: 'Regional Territory Scoped (Assigned Distributors & Dealers)',
+          stockistsCount: 1,
+          distributorsCount: liveKpis?.distributors || 2,
+          dealersCount: 4,
+          usersCount: 28,
+          totalKeys: 1000,
+          transferredKeys: 450,
+          stockistKeysDayTotal: 450,
+          distributorKeysDayTotal: 220,
+          dealerKeysDayTotal: 110,
+          usersDayTotal: 28,
+          keysDayTotal: 250,
+        }
+      case 'distributor':
+        return {
+          roleTitle: `Distributor (${user?.name || 'City Hub'})`,
+          scopeBadge: 'City Hub Scoped (Assigned Dealers & Customers Only)',
+          stockistsCount: 0,
+          distributorsCount: 1,
+          dealersCount: 2,
+          usersCount: 12,
+          totalKeys: 500,
+          transferredKeys: 180,
+          stockistKeysDayTotal: 0,
+          distributorKeysDayTotal: 180,
+          dealerKeysDayTotal: 75,
+          usersDayTotal: 12,
+          keysDayTotal: 120,
+        }
+      case 'dealer':
+        return {
+          roleTitle: `Dealer (${user?.name || 'Retail Store'})`,
+          scopeBadge: 'Store Outlet Scoped (Customer Device Activations Only)',
+          stockistsCount: 0,
+          distributorsCount: 0,
+          dealersCount: 1,
+          usersCount: 6,
+          totalKeys: 50,
+          transferredKeys: 0,
+          stockistKeysDayTotal: 0,
+          distributorKeysDayTotal: 0,
+          dealerKeysDayTotal: 35,
+          usersDayTotal: 6,
+          keysDayTotal: 30,
+        }
+      default:
+        return {
+          roleTitle: 'V-Credit Operator',
+          scopeBadge: 'Standard Operator View',
+          stockistsCount: 1,
+          distributorsCount: 1,
+          dealersCount: 1,
+          usersCount: 10,
+          totalKeys: 100,
+          transferredKeys: 20,
+          stockistKeysDayTotal: 0,
+          distributorKeysDayTotal: 50,
+          dealerKeysDayTotal: 25,
+          usersDayTotal: 10,
+          keysDayTotal: 50,
+        }
+    }
+  }, [role, user?.name, liveKpis])
+
+  // Hierarchical Access Permissions
+  const canSeeStockistGraph = role === 'super_admin' || role === 'stockist'
+  const canSeeDistributorGraph = role === 'super_admin' || role === 'stockist' || role === 'distributor'
+  const canSeeDealerGraph = true // All roles can see dealer metrics scoped to their level
+  const canSeeUsersGraph = true // All roles can see end user activations scoped to their level
+  const canSeeKeysGraph = true // All roles can see keys flow scoped to their tier
+
+  // State for Year/Month filters for each chart
+  const [stkYear, setStkYear] = useState('2026')
+  const [stkMonth, setStkMonth] = useState('Oct')
+
+  const [distYear, setDistYear] = useState('2026')
+  const [distMonth, setDistMonth] = useState('Oct')
+
+  const [dlrYear, setDlrYear] = useState('2026')
+  const [dlrMonth, setDlrMonth] = useState('Oct')
+
+  const [usersYear, setUsersYear] = useState('2026')
+  const [usersMonth, setUsersMonth] = useState('Oct')
+
+  const [keysYear, setKeysYear] = useState('2026')
+  const [keysMonth, setKeysMonth] = useState('Oct')
+
+  return (
+    <div className="space-y-6 bg-card p-6 sm:p-8 rounded-3xl shadow-xs border border-border">
+      {/* Title */}
+      <div className="pb-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-display font-black text-foreground tracking-tight">
+            Analytics
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Performance and key distribution across stockists, distributors, dealers, and users
+          </p>
+        </div>
+
+        {/* Scope */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border border-border text-xs">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-muted-foreground">Scope:</span>
+          <strong className="text-primary">{scopedData.roleTitle}</strong>
+        </div>
+      </div>
+
+      {/* Role-Scoped Summary KPI Ribbon */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        {canSeeStockistGraph && (
+          <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                {role === 'super_admin' ? 'Total Stockists' : 'My Stockist Vault'}
+              </span>
+              <p className="text-xl font-mono font-black text-foreground mt-0.5">
+                {scopedData.stockistsCount}
+              </p>
+              <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                Tier-1 Partners
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+              <Building2 className="h-4.5 w-4.5" />
+            </div>
+          </div>
+        )}
+
+        {canSeeDistributorGraph && (
+          <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                {role === 'distributor' ? 'My Hub' : 'City Distributors'}
+              </span>
+              <p className="text-xl font-mono font-black text-foreground mt-0.5">
+                {scopedData.distributorsCount}
+              </p>
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                Territory Hubs
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
+              <Users className="h-4.5 w-4.5" />
+            </div>
+          </div>
+        )}
+
+        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              {role === 'dealer' ? 'My Store' : 'Active Dealers'}
+            </span>
+            <p className="text-xl font-mono font-black text-foreground mt-0.5">
+              {scopedData.dealersCount}
+            </p>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+              Retail Stores
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <Store className="h-4.5 w-4.5" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              Enrolled Users
+            </span>
+            <p className="text-xl font-mono font-black text-foreground mt-0.5">
+              {scopedData.usersCount}
+            </p>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              Borrower Phones
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="h-4.5 w-4.5" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              License Keys
+            </span>
+            <p className="text-xl font-mono font-black text-foreground mt-0.5">
+              {scopedData.totalKeys.toLocaleString()}
+            </p>
+            <span className="text-[10px] text-primary font-semibold">
+              In Tier Quota
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-primary/15 text-primary">
+            <Key className="h-4.5 w-4.5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Role-Based Graphs Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Users Activated Chart */}
-        <div className="border border-border/80 rounded-2xl p-5 space-y-5 bg-card/60 backdrop-blur-xs shadow-xs">
-          {/* Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground font-medium">Year</span>
-                <select
-                  value={usersYear}
-                  onChange={(e) => setUsersYear(e.target.value)}
-                  className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {YEARS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* 1. STOCKISTS - Visible ONLY to Super Admin and Stockist */}
+        {canSeeStockistGraph && (
+          <DailyBarChart
+            title="Stockists"
+            subtitle="Daily keys dispatched to stockists"
+            badgeLabel={`Stockists: ${scopedData.stockistsCount}`}
+            badgeIcon={Building2}
+            badgeColorClass="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+            gradientFromTo="from-purple-600 via-purple-500 to-indigo-400"
+            legendLabel="Daily Keys Dispatched to Stockists"
+            year={stkYear}
+            setYear={setStkYear}
+            month={stkMonth}
+            setMonth={setStkMonth}
+            total={scopedData.stockistKeysDayTotal}
+            unit="keys"
+            seed={1}
+          />
+        )}
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground font-medium">Month</span>
-                <select
-                  value={usersMonth}
-                  onChange={(e) => setUsersMonth(e.target.value)}
-                  className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* 2. DISTRIBUTORS - Visible to Super Admin, Stockist, and Distributor */}
+        {canSeeDistributorGraph && (
+          <DailyBarChart
+            title="Distributors"
+            subtitle="Daily keys allocated to city distributors"
+            badgeLabel={`Distributors: ${scopedData.distributorsCount}`}
+            badgeIcon={Users}
+            badgeColorClass="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+            gradientFromTo="from-blue-600 via-blue-500 to-sky-400"
+            legendLabel="Daily Keys Allocated to City Distributors"
+            year={distYear}
+            setYear={setDistYear}
+            month={distMonth}
+            setMonth={setDistMonth}
+            total={scopedData.distributorKeysDayTotal}
+            unit="keys"
+            seed={2}
+          />
+        )}
 
-              <button
-                type="button"
-                onClick={() => toast.info(`Filtered user activations for ${usersMonth} ${usersYear}`)}
-                className="btn-action-primary text-xs font-bold h-8 px-4"
-              >
-                Search
-              </button>
-            </div>
+        {/* 3. DEALERS - Scoped to role level */}
+        {canSeeDealerGraph && (
+          <DailyBarChart
+            title="Dealers"
+            subtitle="Daily keys supplied to retail mobile shops"
+            badgeLabel={`Dealers: ${scopedData.dealersCount}`}
+            badgeIcon={Store}
+            badgeColorClass="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+            gradientFromTo="from-amber-600 via-amber-500 to-yellow-400"
+            legendLabel="Daily Retail Key Stock Issued to Dealers"
+            year={dlrYear}
+            setYear={setDlrYear}
+            month={dlrMonth}
+            setMonth={setDlrMonth}
+            total={scopedData.dealerKeysDayTotal}
+            unit="keys"
+            seed={3}
+          />
+        )}
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-              <Users className="h-3.5 w-3.5" />
-              <span>Total Users: {totalUsers}</span>
-            </div>
+        {/* 4. USERS - Scoped customer device activations */}
+        {canSeeUsersGraph && (
+          <DailyBarChart
+            title="Users"
+            subtitle="Daily customer device activations"
+            badgeLabel={`Total Users: ${scopedData.usersCount}`}
+            badgeIcon={TrendingUp}
+            badgeColorClass="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+            gradientFromTo="from-emerald-600 via-emerald-500 to-lime-400"
+            legendLabel="Daily Customer Device Activations"
+            year={usersYear}
+            setYear={setUsersYear}
+            month={usersMonth}
+            setMonth={setUsersMonth}
+            total={scopedData.usersDayTotal}
+            unit="activations"
+            seed={4}
+          />
+        )}
+
+        {/* 5. KEYS - License inventory allocated & distributed */}
+        {canSeeKeysGraph && (
+          <div className="xl:col-span-2">
+            <DailyBarChart
+              title="Keys"
+              subtitle="Daily license keys in circulation and inventory flow"
+              badgeLabel={`Quota: ${scopedData.totalKeys.toLocaleString()} Keys`}
+              badgeIcon={Key}
+              badgeColorClass="bg-primary/10 text-primary border-primary/20"
+              gradientFromTo="from-primary via-indigo-500 to-cyan-400"
+              legendLabel="Daily License Keys Transferred & In-Flight"
+              year={keysYear}
+              setYear={setKeysYear}
+              month={keysMonth}
+              setMonth={setKeysMonth}
+              total={scopedData.keysDayTotal}
+              unit="keys"
+              seed={5}
+            />
           </div>
-
-          {/* Bar Chart Presentation */}
-          <div className="relative pt-2">
-            <div className="text-[11px] font-semibold text-muted-foreground text-center mb-3 flex items-center justify-center gap-2">
-              <span className="inline-block w-3.5 h-2 rounded bg-gradient-to-r from-emerald-500 to-lime-400" />
-              <span>Daily Borrower Activations</span>
-            </div>
-
-            <div className="overflow-x-auto pb-2">
-              <div className="flex items-end gap-1.5 h-52 min-w-max px-3 pt-6 border-b border-border" style={{ minWidth: '480px' }}>
-                {userData.map((d) => {
-                  const barH = d.value === 0 ? 3 : Math.max(10, (d.value / maxUserValue) * 175)
-                  return (
-                    <div key={d.day} className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                      <div
-                        className="rounded-t-md transition-all duration-300 bg-gradient-to-t from-emerald-600 via-emerald-500 to-lime-400 group-hover:brightness-110 group-hover:scale-y-105 shadow-xs"
-                        style={{
-                          width: '11px',
-                          height: `${barH}px`,
-                        }}
-                        title={`Day ${d.day}: ${d.value} activations`}
-                      />
-                      <span className="text-[9px] font-mono text-muted-foreground group-hover:text-foreground">
-                        {d.day}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Y-axis indicator values */}
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 px-1">
-              <span>0 (Min)</span>
-              <span>{(maxUserValue / 2).toFixed(0)} (Mid)</span>
-              <span>{maxUserValue} (Peak Daily)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Keys Sold Chart */}
-        <div className="border border-border/80 rounded-2xl p-5 space-y-5 bg-card/60 backdrop-blur-xs shadow-xs">
-          {/* Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground font-medium">Year</span>
-                <select
-                  value={salesYear}
-                  onChange={(e) => setSalesYear(e.target.value)}
-                  className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {YEARS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground font-medium">Month</span>
-                <select
-                  value={salesMonth}
-                  onChange={(e) => setSalesMonth(e.target.value)}
-                  className="h-8 rounded-lg border border-border px-2.5 bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => toast.info(`Filtered key transfers for ${salesMonth} ${salesYear}`)}
-                className="btn-action-primary text-xs font-bold h-8 px-4"
-              >
-                Search
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
-              <Key className="h-3.5 w-3.5" />
-              <span>Total Keys: {totalSales}</span>
-            </div>
-          </div>
-
-          {/* Bar Chart Presentation */}
-          <div className="relative pt-2">
-            <div className="text-[11px] font-semibold text-muted-foreground text-center mb-3 flex items-center justify-center gap-2">
-              <span className="inline-block w-3.5 h-2 rounded bg-gradient-to-r from-blue-500 to-cyan-400" />
-              <span>Daily Keys Allocated & Distributed</span>
-            </div>
-
-            <div className="overflow-x-auto pb-2">
-              <div className="flex items-end gap-1.5 h-52 min-w-max px-3 pt-6 border-b border-border" style={{ minWidth: '480px' }}>
-                {salesData.map((d) => {
-                  const barH = d.value === 0 ? 3 : Math.max(10, (d.value / maxSalesValue) * 175)
-                  return (
-                    <div key={d.day} className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                      <div
-                        className="rounded-t-md transition-all duration-300 bg-gradient-to-t from-blue-600 via-blue-500 to-cyan-400 group-hover:brightness-110 group-hover:scale-y-105 shadow-xs"
-                        style={{
-                          width: '11px',
-                          height: `${barH}px`,
-                        }}
-                        title={`Day ${d.day}: ${d.value} keys transferred`}
-                      />
-                      <span className="text-[9px] font-mono text-muted-foreground group-hover:text-foreground">
-                        {d.day}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Y-axis indicator values */}
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 px-1">
-              <span>0 (Min)</span>
-              <span>{Math.round(maxSalesValue / 2)} (Mid)</span>
-              <span>{maxSalesValue} (Peak Daily)</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )

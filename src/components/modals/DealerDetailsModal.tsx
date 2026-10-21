@@ -1,12 +1,39 @@
 import { Modal } from '@/components/ui/Modal'
 import { Download } from 'lucide-react'
-import type { DealerRecord } from '@/mocks/mockSeedData'
 import { toast } from 'sonner'
+
+export interface DealerDetailsData {
+  id?: string
+  entityCode?: string
+  dealerCode?: string
+  createDate?: string
+  dealerShop?: string
+  name?: string
+  dealerName?: string
+  phone?: string
+  email?: string
+  distributor?: string
+  superStockiest?: string
+  national?: string
+  gst?: string
+  gstNumber?: string
+  available?: number
+  availableKeys?: number
+  keys?: number
+  totalKeys?: number
+  address?: string
+  city?: string
+  territory?: string
+  state?: string
+  pincode?: string
+  document1?: string
+  document2?: string
+}
 
 interface DealerDetailsModalProps {
   isOpen: boolean
   onClose: () => void
-  dealer: DealerRecord | null
+  dealer: DealerDetailsData | null
 }
 
 export function DealerDetailsModal({ isOpen, onClose, dealer }: DealerDetailsModalProps) {
@@ -17,19 +44,20 @@ export function DealerDetailsModal({ isOpen, onClose, dealer }: DealerDetailsMod
   }
 
   const detailsList = [
+    { label: 'Entity Code', value: dealer.entityCode || dealer.dealerCode || 'DLR-1001' },
     { label: 'Create Date', value: dealer.createDate || '08/10/2026 16:44:10' },
-    { label: 'Shop', value: dealer.dealerShop },
-    { label: 'Name', value: dealer.dealerName || 'Abhishek malviya' },
+    { label: 'Shop / Business', value: dealer.dealerShop || dealer.name },
+    { label: 'Contact Person', value: dealer.dealerName || 'Abhishek malviya' },
     { label: 'Phone No', value: dealer.phone },
     { label: 'Email Id', value: dealer.email || 'abhimalviya319@gmail.com' },
     { label: 'Distributor', value: dealer.distributor },
     { label: 'Super Stockiest', value: dealer.superStockiest || 'Music Beats' },
     { label: 'National', value: dealer.national || 'HBT EMPLOYEE FAIYAZ' },
-    { label: 'Gst Number', value: dealer.gstNumber || '23AABCU9603R1ZM' },
-    { label: 'Dealer Code', value: dealer.dealerCode || '79746' },
+    { label: 'GST Number', value: dealer.gst || dealer.gstNumber || '23AABCU9603R1ZM' },
+    { label: 'Keys Allocation', value: `${dealer.available ?? dealer.availableKeys} Available / ${dealer.keys ?? dealer.totalKeys} Total` },
     { label: 'Address', value: dealer.address || 'Bus stand Sukhtawa kalaakhar road sukhtawa' },
     { label: 'City', value: dealer.city },
-    { label: 'State', value: dealer.state },
+    { label: 'Territory / State', value: dealer.territory || dealer.state },
     { label: 'Pincode', value: dealer.pincode || '460001' },
   ]
 

@@ -1,6 +1,6 @@
 import { Modal } from '@/components/ui/Modal'
 import { Printer, Download, CheckCircle2 } from 'lucide-react'
-import type { TransferReportItem } from '@/mocks/mockSeedData'
+import type { TransferReportItem } from '@/features/reports/types'
 import { toast } from 'sonner'
 
 interface InvoiceReceiptModalProps {
@@ -12,14 +12,17 @@ interface InvoiceReceiptModalProps {
 export function InvoiceReceiptModal({ isOpen, onClose, item }: InvoiceReceiptModalProps) {
   if (!item) return null
 
-  const totalAmount = item.noOfKeys * item.keyPrice
+  const quantity = item.quantity || item.noOfKeys || item.keys || 0
+  const unitPrice = item.keyPrice || 50
+  const totalAmount = quantity * unitPrice
+  const invoiceId = item.invoiceNo || item.transferId || item.id || 'TXN-001'
 
   const handlePrint = () => {
     window.print()
   }
 
   const handleDownload = () => {
-    toast.success(`Downloaded Receipt PDF: INV-${item.id.toUpperCase()}.pdf`)
+    toast.success(`Downloaded Receipt PDF: INV-${String(invoiceId).toUpperCase()}.pdf`)
   }
 
   return (
@@ -47,7 +50,7 @@ export function InvoiceReceiptModal({ isOpen, onClose, item }: InvoiceReceiptMod
               <span className="inline-block px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[10px] border border-emerald-500/20">
                 PAID & TRANSFERRED
               </span>
-              <p className="font-mono text-foreground font-bold mt-1">INV-{item.id.toUpperCase()}</p>
+              <p className="font-mono text-foreground font-bold mt-1">INV-{String(invoiceId).toUpperCase()}</p>
               <p className="text-[11px] text-muted-foreground">{item.transactionDate}</p>
             </div>
           </div>
@@ -80,10 +83,10 @@ export function InvoiceReceiptModal({ isOpen, onClose, item }: InvoiceReceiptMod
                 <tr className="border-t border-border bg-card/50">
                   <td className="py-2.5 px-3 font-semibold text-foreground">
                     EmiSafe Device Finance License Keys
-                    {item.remark && <span className="block text-[11px] text-muted-foreground font-normal">{item.remark}</span>}
+                    {(item.remark || item.note) && <span className="block text-[11px] text-muted-foreground font-normal">{item.remark || item.note}</span>}
                   </td>
-                  <td className="py-2.5 px-3 text-center font-bold text-foreground">{item.noOfKeys}</td>
-                  <td className="py-2.5 px-3 text-right font-mono text-foreground">₹{item.keyPrice.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-center font-bold text-foreground">{quantity}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-foreground">₹{unitPrice.toFixed(2)}</td>
                   <td className="py-2.5 px-3 text-right font-bold font-mono text-primary">₹{totalAmount.toLocaleString()}</td>
                 </tr>
               </tbody>

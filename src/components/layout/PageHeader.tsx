@@ -34,12 +34,12 @@ export function PageHeader({
     >
       <div className="space-y-1">
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground pb-1">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground pb-1">
             {breadcrumbs.map((b, i) => {
               const isLast = i === breadcrumbs.length - 1
               return (
                 <React.Fragment key={i}>
-                  {i > 0 && <ChevronRight className="h-3 w-3 opacity-50 shrink-0" />}
+                  {i > 0 && <ChevronRight className="h-3.5 w-3.5 opacity-50 shrink-0" />}
                   {b.path && !isLast ? (
                     <Link
                       to={b.path}
@@ -66,7 +66,7 @@ export function PageHeader({
         </div>
 
         {subtitle && (
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
             {subtitle}
           </p>
         )}

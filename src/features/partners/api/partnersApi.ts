@@ -91,6 +91,8 @@ export const MOCK_PARTNERS: Partner[] = [
   },
 ]
 
+import type { HierarchyPartnerRow } from '../types'
+
 export const partnersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPartners: builder.query<ApiResponse<PaginatedResponse<Partner>>, PaginationParams | void>({
@@ -108,7 +110,70 @@ export const partnersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
     }),
+    createStockist: builder.mutation<ApiResponse<HierarchyPartnerRow>, CreatePartnerRequest>({
+      query: (body) => ({
+        url: '/enterprise/stockists',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
+    }),
+    createDistributor: builder.mutation<ApiResponse<HierarchyPartnerRow>, CreatePartnerRequest>({
+      query: (body) => ({
+        url: '/enterprise/distributors',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
+    }),
+    createDealer: builder.mutation<ApiResponse<HierarchyPartnerRow>, CreatePartnerRequest>({
+      query: (body) => ({
+        url: '/enterprise/dealers',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
+    }),
+    getStockists: builder.query<ApiResponse<PaginatedResponse<HierarchyPartnerRow>>, PaginationParams | void>({
+      query: (params) => ({
+        url: '/enterprise/stockists',
+        params: params || {},
+      }),
+      providesTags: [API_TAGS.PARTNERS],
+    }),
+    getDistributors: builder.query<ApiResponse<PaginatedResponse<HierarchyPartnerRow>>, PaginationParams | void>({
+      query: (params) => ({
+        url: '/enterprise/distributors',
+        params: params || {},
+      }),
+      providesTags: [API_TAGS.PARTNERS],
+    }),
+    getDealers: builder.query<ApiResponse<PaginatedResponse<HierarchyPartnerRow>>, PaginationParams | void>({
+      query: (params) => ({
+        url: '/enterprise/dealers',
+        params: params || {},
+      }),
+      providesTags: [API_TAGS.PARTNERS],
+    }),
+    resetPartnerPassword: builder.mutation<ApiResponse<{ id: string }>, { userId: string; password: string }>({
+      query: ({ userId, password }) => ({
+        url: `/enterprise/users/${userId}/password`,
+        method: 'PATCH',
+        body: { password },
+      }),
+      invalidatesTags: [API_TAGS.PARTNERS],
+    }),
   }),
 })
 
-export const { useGetPartnersQuery, useCreatePartnerMutation } = partnersApi
+export const {
+  useGetPartnersQuery,
+  useCreatePartnerMutation,
+  useCreateStockistMutation,
+  useCreateDistributorMutation,
+  useCreateDealerMutation,
+  useGetStockistsQuery,
+  useGetDistributorsQuery,
+  useGetDealersQuery,
+  useResetPartnerPasswordMutation,
+} = partnersApi

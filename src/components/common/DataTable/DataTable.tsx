@@ -179,8 +179,8 @@ export function DataTable<T extends Record<string, any>>({
               variant="outline"
               size="sm"
               onClick={handleExportCSV}
-              leftIcon={<Download className="h-3.5 w-3.5" />}
-              className="text-xs"
+              leftIcon={<Download className="h-4 w-4" />}
+              className="text-sm font-semibold"
             >
               Export CSV
             </Button>
@@ -191,9 +191,9 @@ export function DataTable<T extends Record<string, any>>({
       {/* Main Table Container */}
       <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse min-w-[1000px]">
             <thead>
-              <tr className="border-b border-border/60 bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground select-none">
+              <tr className="border-b border-border/60 bg-muted/50 text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                 {onSelectionChange && (
                   <th className="w-10 px-4 py-3.5 text-center">
                     <input
@@ -310,18 +310,18 @@ export function DataTable<T extends Record<string, any>>({
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground bg-card/60">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60 px-5 py-3.5 text-sm text-muted-foreground bg-card/60">
           <div className="flex items-center gap-2">
             <span>
               Showing{' '}
-              <strong className="text-foreground">
+              <strong className="text-foreground font-semibold">
                 {total === 0 ? 0 : (effectivePage - 1) * effectivePageSize + 1}
               </strong>{' '}
               to{' '}
-              <strong className="text-foreground">
+              <strong className="text-foreground font-semibold">
                 {Math.min(effectivePage * effectivePageSize, total)}
               </strong>{' '}
-              of <strong className="text-foreground">{total}</strong> records
+              of <strong className="text-foreground font-semibold">{total}</strong> records
             </span>
           </div>
 

@@ -46,7 +46,7 @@ export function FilterBar({
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={onSearchChange}
-            className="h-9 text-xs"
+            className="h-10 text-sm"
           />
         )}
 
@@ -55,7 +55,7 @@ export function FilterBar({
             key={filter.id}
             value={filter.value}
             onChange={(e) => filter.onChange(e.target.value)}
-            className="h-9 rounded-xl border border-input bg-background/80 px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+            className="h-10 rounded-xl border border-input bg-background/80 px-3.5 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
           >
             <option value="all">All {filter.label}</option>
             {filter.options.map((opt) => (
@@ -71,8 +71,8 @@ export function FilterBar({
             variant="ghost"
             size="sm"
             onClick={onReset}
-            leftIcon={<RotateCcw className="h-3 w-3" />}
-            className="text-xs h-9 text-muted-foreground hover:text-foreground"
+            leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+            className="text-sm h-10 font-medium text-muted-foreground hover:text-foreground"
           >
             Reset
           </Button>

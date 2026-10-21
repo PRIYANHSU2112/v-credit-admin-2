@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import {
   PlusCircle,
   Send,
   Copy,
   Check,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
@@ -12,127 +15,189 @@ import { StatusBadge } from '@/components/common/StatusBadge/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { ConfirmModal } from '@/components/common/ConfirmModal/ConfirmModal'
 import { useAppSelector } from '@/app/store/hooks'
 import { hasPermission } from '@/config/permissions'
-import { formatDate, maskImei, copyToClipboard } from '@/lib/utils'
-import { MOCK_KEYS } from '../api/keysApi'
-import type { LicenseKey } from '../types'
+import { copyToClipboard } from '@/lib/utils'
+import {
+  useGetKeysQuery,
+  useBulkGenerateKeysMutation,
+  useTransferKeyBatchMutation,
+  useReclaimKeyBatchMutation,
+  useGetStockistsQuery,
+} from '@/features/enterprise/api/enterpriseApi'
+import { useDebounce } from '@/hooks/useDebounce'
 import { toast } from 'sonner'
 
 export default function KeysPage() {
   const { user } = useAppSelector((state) => state.auth)
-  const canGenerate = hasPermission(user?.role, 'keys:generate')
-  const canTransfer = hasPermission(user?.role, 'keys:transfer')
-  const canReclaim = hasPermission(user?.role, 'keys:reclaim')
+  const canGenerate = hasPermission(user?.role, 'keys:generate') || user?.role === 'super_admin'
+  const canTransfer = hasPermission(user?.role, 'keys:transfer') || user?.role === 'super_admin'
+  const canReclaim = hasPermission(user?.role, 'keys:reclaim') || user?.role === 'super_admin'
 
-  const [keysList, setKeysList] = useState<LicenseKey[]>(MOCK_KEYS)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [tierFilter, setTierFilter] = useState('all')
+  const [currentPage] = useState(1)
+  const pageSize = 50
+
+  const debouncedSearch = useDebounce(searchQuery, 350)
+
+  // Live queries
+  const {
+    data: apiResponse,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useGetKeysQuery({
+    page: currentPage,
+    limit: pageSize,
+    search: debouncedSearch.trim() || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  })
+
+  const { data: stockistsRes } = useGetStockistsQuery()
+  const stockistsList = stockistsRes?.data || []
+
+  // Mutations
+  const [bulkGenerateKeys, { isLoading: isGenerating }] = useBulkGenerateKeysMutation()
+  const [transferKeyBatch, { isLoading: isTransferring }] = useTransferKeyBatchMutation()
+  const [reclaimKeyBatch, { isLoading: isReclaiming }] = useReclaimKeyBatchMutation()
 
   // Modals state
   const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [reclaimKeyTarget, setReclaimKeyTarget] = useState<LicenseKey | null>(null)
+  const [reclaimTarget, setReclaimTarget] = useState<any | null>(null)
 
   // Form states
   const [generateQuantity, setGenerateQuantity] = useState('100')
+  const [keyType, setKeyType] = useState<'standard' | 'iphone'>('standard')
+  const [generateDesc, setGenerateDesc] = useState('Central Vault Batch')
+
   const [transferQuantity, setTransferQuantity] = useState('50')
-  const [transferTarget, setTransferTarget] = useState('North Regional Stockist')
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferNote, setTransferNote] = useState('')
+
+  const [reclaimQuantity, setReclaimQuantity] = useState('10')
+  const [reclaimNote, setReclaimNote] = useState('Routine key audit recovery')
+
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
 
-  // Filtered keys
-  const filteredKeys = useMemo(() => {
-    return keysList.filter((k) => {
-      const matchesSearch =
-        searchQuery.trim() === '' ||
-        k.keyCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        k.holderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (k.assignedCustomer && k.assignedCustomer.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (k.assignedImei && k.assignedImei.includes(searchQuery))
+  const keysList = apiResponse?.data || []
 
-      const matchesStatus = statusFilter === 'all' || k.status === statusFilter
-      const matchesTier = tierFilter === 'all' || k.holderTier === tierFilter
-
-      return matchesSearch && matchesStatus && matchesTier
-    })
-  }, [keysList, searchQuery, statusFilter, tierFilter])
-
-  const handleCopyKey = async (key: LicenseKey) => {
-    const success = await copyToClipboard(key.keyCode)
+  const handleCopyKey = async (keyCode: string, id: string) => {
+    const success = await copyToClipboard(keyCode)
     if (success) {
-      setCopiedKeyId(key.id)
-      toast.success('Key copied to clipboard')
+      setCopiedKeyId(id)
+      toast.success('Key code copied to clipboard')
       setTimeout(() => setCopiedKeyId(null), 2000)
     }
   }
 
-  const handleGenerateSubmit = (e: React.FormEvent) => {
+  // Handle Generation
+  const handleGenerateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const qty = parseInt(generateQuantity, 10)
-    if (isNaN(qty) || qty <= 0) {
-      toast.error('Please enter a valid key quantity.')
+    if (isNaN(qty) || qty < 1 || qty > 10000) {
+      toast.error('Enter a quantity between 1 and 10,000')
       return
     }
 
-    const newKey: LicenseKey = {
-      id: `key_${Date.now()}`,
-      keyCode: `VC-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
-      batchNumber: `BATCH-2026-00${Math.floor(Math.random() * 9) + 4}`,
-      status: 'available',
-      holderTier: user?.role === 'dealer' ? 'dealer' : 'super_admin',
-      holderName: user?.name || 'Central Vault',
-      generatedAt: new Date().toISOString(),
+    try {
+      const res = await bulkGenerateKeys({
+        count: qty,
+        keyType,
+        description: generateDesc,
+      }).unwrap()
+
+      toast.success(`Generated ${qty} ${keyType.toUpperCase()} keys in Vault!`, {
+        description: `Batch Ref: ${res?.data?.batchId || 'BATCH-' + Date.now().toString().slice(-4)}`,
+      })
+      setIsGenerateOpen(false)
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to generate key batch')
+    }
+  }
+
+  // Handle Transfer
+  const handleTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const target = transferTargetId || stockistsList[0]?._id
+    if (!target) {
+      toast.error('Please select a target partner')
+      return
+    }
+    const qty = parseInt(transferQuantity, 10)
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Enter a valid transfer quantity')
+      return
     }
 
-    setKeysList([newKey, ...keysList])
-    setIsGenerateOpen(false)
-    toast.success(`Successfully generated batch of ${qty} keys!`, {
-      description: `First key: ${newKey.keyCode}`,
-    })
+    try {
+      await transferKeyBatch({
+        toUserId: target,
+        quantity: qty,
+        note: transferNote || 'Super Admin Key Dispatch',
+      }).unwrap()
+
+      toast.success(`Allocated ${qty} keys downstream!`)
+      setIsTransferOpen(false)
+      setTransferNote('')
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to transfer keys')
+    }
   }
 
-  const handleTransferSubmit = (e: React.FormEvent) => {
+  // Handle Reclaim
+  const handleReclaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsTransferOpen(false)
-    toast.success(`Allocated ${transferQuantity} keys to ${transferTarget}!`)
+    if (!reclaimTarget) return
+    const qty = parseInt(reclaimQuantity, 10)
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Enter a valid quantity to reclaim')
+      return
+    }
+
+    try {
+      await reclaimKeyBatch({
+        fromUserId: reclaimTarget._id || reclaimTarget.id,
+        quantity: qty,
+        note: reclaimNote,
+      }).unwrap()
+
+      toast.success(`Reclaimed ${qty} keys back to Super Admin vault!`)
+      setReclaimTarget(null)
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to reclaim keys')
+    }
   }
 
-  const handleConfirmReclaim = () => {
-    if (!reclaimKeyTarget) return
-    setKeysList(
-      keysList.map((k) =>
-        k.id === reclaimKeyTarget.id ? { ...k, status: 'reclaimed' as const } : k
-      )
-    )
-    toast.success(`Key ${reclaimKeyTarget.keyCode} reclaimed back to your vault.`)
-    setReclaimKeyTarget(null)
-  }
-
-  const columns: ColumnDef<LicenseKey>[] = [
+  const columns: ColumnDef<any>[] = [
     {
-      id: 'keyCode',
+      id: 'key',
       header: 'License Key Code',
       sortable: true,
       render: (item) => (
         <div className="flex items-center gap-2">
-          <span className="font-mono font-semibold text-xs text-foreground bg-muted/50 px-2 py-1 rounded-lg border border-border/50">
-            {item.keyCode}
+          <span className="font-mono font-bold text-sm text-foreground bg-muted/60 px-2.5 py-1.5 rounded-lg border border-border/50">
+            {item.key || item.keyCode || item.keyNumber}
           </span>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              handleCopyKey(item)
+              handleCopyKey(item.key || item.keyCode, item._id || item.id)
             }}
             className="text-muted-foreground hover:text-foreground transition-colors p-1"
             title="Copy key"
           >
-            {copiedKeyId === item.id ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            {copiedKeyId === (item._id || item.id) ? (
+              <Check className="h-4 w-4 text-emerald-500" />
             ) : (
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-4 w-4" />
             )}
           </button>
         </div>
@@ -140,10 +205,13 @@ export default function KeysPage() {
     },
     {
       id: 'batch',
-      header: 'Batch',
-      accessorKey: 'batchNumber',
+      header: 'Batch Reference',
       sortable: true,
-      className: 'text-xs text-muted-foreground font-mono',
+      render: (item) => (
+        <span className="font-mono text-sm text-muted-foreground">
+          {item.batch || item.batchNumber || '—'}
+        </span>
+      ),
     },
     {
       id: 'status',
@@ -152,40 +220,25 @@ export default function KeysPage() {
       render: (item) => <StatusBadge status={item.status} />,
     },
     {
-      id: 'holder',
-      header: 'Holder / Tier',
+      id: 'owner',
+      header: 'Current Vault / Holder',
       sortable: true,
       render: (item) => (
         <div className="space-y-0.5">
-          <p className="text-xs font-semibold text-foreground">{item.holderName}</p>
-          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wide">
-            {item.holderTier.replace('_', ' ')}
+          <p className="text-sm font-semibold text-foreground">{item.owner || item.holderName || 'Central Vault'}</p>
+          <p className="text-xs uppercase font-bold text-muted-foreground">
+            {item.role || 'Super Admin'}
           </p>
         </div>
       ),
     },
     {
-      id: 'assignment',
-      header: 'Assigned Device / Customer',
-      render: (item) =>
-        item.assignedCustomer ? (
-          <div className="space-y-0.5 text-xs">
-            <p className="font-medium text-foreground">{item.assignedCustomer}</p>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              IMEI: {item.assignedImei ? maskImei(item.assignedImei) : '—'}
-            </p>
-          </div>
-        ) : (
-          <span className="text-xs text-muted-foreground italic">Unassigned</span>
-        ),
-    },
-    {
-      id: 'date',
+      id: 'createdAt',
       header: 'Created Date',
       sortable: true,
       render: (item) => (
-        <span className="text-xs text-muted-foreground">
-          {formatDate(item.generatedAt)}
+        <span className="text-sm text-muted-foreground font-mono">
+          {item.createdAt ? String(item.createdAt).slice(0, 10) : '—'}
         </span>
       ),
     },
@@ -195,21 +248,23 @@ export default function KeysPage() {
       className: 'text-right',
       render: (item) => (
         <div className="flex items-center justify-end gap-1.5">
-          {canReclaim && item.status === 'allocated' && (
+          {canReclaim && item.status !== 'Generated' && item.status !== 'Activated' && (
             <Button
               variant="outline"
               size="xs"
               onClick={(e) => {
                 e.stopPropagation()
-                setReclaimKeyTarget(item)
+                setReclaimTarget(item)
               }}
-              className="text-xs text-amber-500 hover:text-amber-600"
+              className="text-xs font-semibold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
             >
               Reclaim
             </Button>
           )}
-          {item.status === 'used' && (
-            <span className="text-[11px] text-muted-foreground italic">Activated</span>
+          {item.status === 'Generated' && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
+              Ready in Vault
+            </span>
           )}
         </div>
       ),
@@ -220,9 +275,18 @@ export default function KeysPage() {
     <div className="space-y-6">
       <PageHeader
         title="License Key Management"
-        subtitle="Generate digital key batches, track multi-tier distribution, and monitor activation lifecycle."
+        subtitle="Generate digital master key batches, allocate quotas downstream to Stockists, and monitor activation life-cycle."
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              disabled={isLoading || isFetching}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors shadow-2xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
             {canTransfer && (
               <Button
                 variant="outline"
@@ -247,11 +311,27 @@ export default function KeysPage() {
         }
       />
 
+      {isError && (
+        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{(error as any)?.data?.message || 'Failed to load keys from backend'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-3 py-1 bg-destructive text-destructive-foreground font-semibold rounded-lg hover:opacity-90"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <FilterBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Filter by key code, partner, customer or IMEI..."
+        searchPlaceholder="Filter by key code, batch reference, or vault owner..."
         selectFilters={[
           {
             id: 'status',
@@ -259,167 +339,210 @@ export default function KeysPage() {
             value: statusFilter,
             onChange: setStatusFilter,
             options: [
-              { label: 'Available (Unused)', value: 'available' },
-              { label: 'Allocated', value: 'allocated' },
-              { label: 'Used / Activated', value: 'used' },
-              { label: 'Reclaimed', value: 'reclaimed' },
-            ],
-          },
-          {
-            id: 'tier',
-            label: 'Tier',
-            value: tierFilter,
-            onChange: setTierFilter,
-            options: [
-              { label: 'Super Admin', value: 'super_admin' },
-              { label: 'Stockist', value: 'stockist' },
-              { label: 'Distributor', value: 'distributor' },
-              { label: 'Dealer', value: 'dealer' },
+              { label: 'Available / Generated', value: 'Generated' },
+              { label: 'Allocated Downstream', value: 'Allocated' },
+              { label: 'Activated / Used', value: 'Activated' },
+              { label: 'Reclaimed to Vault', value: 'Reclaimed' },
             ],
           },
         ]}
         onReset={() => {
           setSearchQuery('')
           setStatusFilter('all')
-          setTierFilter('all')
         }}
       />
 
       {/* Reusable Data Table */}
-      <DataTable
-        data={filteredKeys}
-        columns={columns}
-        exportable
-        exportFilename="v-credit-license-keys.csv"
-        pageSize={10}
-      />
+      {isLoading ? (
+        <div className="p-12 text-center text-muted-foreground bg-card rounded-2xl border border-border">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
+          <p className="text-xs">Loading live key ledger from MongoDB...</p>
+        </div>
+      ) : (
+        <DataTable
+          data={keysList}
+          columns={columns}
+          exportable
+          exportFilename="v-credit-license-keys.csv"
+        />
+      )}
 
-      {/* Generate Batch Modal */}
+      {/* ─── Modal 1: Generate Keys ─── */}
       <Modal
         isOpen={isGenerateOpen}
         onClose={() => setIsGenerateOpen(false)}
-        title="Generate License Key Batch"
-        description="Mint new cryptographically secure keys into your central vault."
+        title="Generate New License Key Batch"
+        description="Creates unique cryptographic unlock tokens in the Super Admin Central Vault."
         size="md"
       >
-        <form onSubmit={handleGenerateSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Number of Keys to Generate
-            </label>
-            <Input
-              type="number"
-              min="1"
-              max="10000"
-              value={generateQuantity}
-              onChange={(e) => setGenerateQuantity(e.target.value)}
-              placeholder="e.g. 500"
-              required
-            />
+        <form onSubmit={handleGenerateSubmit} className="space-y-4 pt-1 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="font-semibold text-foreground">License Key Type</label>
+              <select
+                value={keyType}
+                onChange={(e) => setKeyType(e.target.value as any)}
+                className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="standard">Android (EmiSafe Standard)</option>
+                <option value="iphone">Apple iOS MDM License</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-foreground">Quantity to Mint *</label>
+              <Input
+                type="number"
+                min="1"
+                max="10000"
+                value={generateQuantity}
+                onChange={(e) => setGenerateQuantity(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Batch Tag / Description
-            </label>
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Batch Memo / Tag</label>
             <Input
               type="text"
-              placeholder="e.g. Q2 North Zone Expansion"
-              defaultValue="Samsung A-Series Batch"
+              value={generateDesc}
+              onChange={(e) => setGenerateDesc(e.target.value)}
+              placeholder="e.g. Q4 Regional Central Vault"
             />
           </div>
 
-          <div className="pt-4 flex justify-end gap-2 border-t border-border/50">
-            <Button
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setIsGenerateOpen(false)}
+              className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted"
             >
               Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Confirm Generation
-            </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="btn-action-primary text-xs font-bold py-2 px-5 flex items-center gap-1.5"
+            >
+              {isGenerating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Mint Key Batch</span>
+            </button>
           </div>
         </form>
       </Modal>
 
-      {/* Transfer Keys Modal */}
+      {/* ─── Modal 2: Transfer Keys ─── */}
       <Modal
         isOpen={isTransferOpen}
         onClose={() => setIsTransferOpen(false)}
         title="Transfer Keys Downstream"
-        description="Allocate available keys to an authorized subordinate partner."
+        description="Dispatch verified unlock license keys to an authorized subordinate stockist or partner."
         size="md"
       >
-        <form onSubmit={handleTransferSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Target Partner
-            </label>
+        <form onSubmit={handleTransferSubmit} className="space-y-4 pt-1 text-xs">
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Target Stockist / Hub *</label>
             <select
-              value={transferTarget}
-              onChange={(e) => setTransferTarget(e.target.value)}
-              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={transferTargetId || stockistsList[0]?._id || ''}
+              onChange={(e) => setTransferTargetId(e.target.value)}
+              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="North Regional Stockist">North Regional Stockist (Punjab/Haryana)</option>
-              <option value="Delhi Hub Distribution">Delhi Hub Distribution (NCR)</option>
-              <option value="Metro Telecom">Metro Telecom (Retail Dealer)</option>
-              <option value="Shiv Mobiles">Shiv Mobiles (Retail Dealer)</option>
+              {stockistsList.map((s) => (
+                <option key={s._id || s.id} value={s._id || s.id}>
+                  {s.name} ({s.id}) — {s.city}, {s.territory}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Quantity to Transfer
-            </label>
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Quantity to Transfer *</label>
             <Input
               type="number"
               min="1"
-              max="5000"
+              max="10000"
               value={transferQuantity}
               onChange={(e) => setTransferQuantity(e.target.value)}
               required
             />
           </div>
 
-          <div className="pt-4 flex justify-end gap-2 border-t border-border/50">
-            <Button
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Transfer Memo / Note</label>
+            <Input
+              type="text"
+              value={transferNote}
+              onChange={(e) => setTransferNote(e.target.value)}
+              placeholder="e.g. Consignment for Tier-1 expansion"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setIsTransferOpen(false)}
+              className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted"
             >
               Cancel
-            </Button>
-            <Button type="submit" variant="gradient" size="sm">
-              Execute Transfer
-            </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={isTransferring}
+              className="btn-action-primary text-xs font-bold py-2 px-5 flex items-center gap-1.5"
+            >
+              {isTransferring && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Confirm Dispatch</span>
+            </button>
           </div>
         </form>
       </Modal>
 
-      {/* Reclaim Confirmation Modal */}
-      <ConfirmModal
-        isOpen={Boolean(reclaimKeyTarget)}
-        onClose={() => setReclaimKeyTarget(null)}
-        onConfirm={handleConfirmReclaim}
-        title="Reclaim License Key?"
-        variant="warning"
-        confirmText="Confirm Reclaim"
-        message={
-          reclaimKeyTarget ? (
-            <p>
-              Are you sure you want to reclaim key{' '}
-              <strong className="font-mono text-foreground">{reclaimKeyTarget.keyCode}</strong> from{' '}
-              <strong>{reclaimKeyTarget.holderName}</strong>? Unused keys will return to your vault.
-            </p>
-          ) : (
-            ''
-          )
-        }
-      />
+      {/* ─── Modal 3: Reclaim Key ─── */}
+      <Modal
+        isOpen={Boolean(reclaimTarget)}
+        onClose={() => setReclaimTarget(null)}
+        title="Reclaim License Keys"
+        description="Withdraw available keys back to the central Super Admin repository."
+        size="sm"
+      >
+        <form onSubmit={handleReclaimSubmit} className="space-y-4 pt-1 text-xs">
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Quantity to Reclaim</label>
+            <Input
+              type="number"
+              min="1"
+              value={reclaimQuantity}
+              onChange={(e) => setReclaimQuantity(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Reason / Audit Memo</label>
+            <Input
+              type="text"
+              value={reclaimNote}
+              onChange={(e) => setReclaimNote(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setReclaimTarget(null)}
+              className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isReclaiming}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
+            >
+              {isReclaiming && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Confirm Reclaim</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

@@ -16,12 +16,19 @@ export const ROUTE_PATHS = {
 
   // Partner Management (User List submenu)
   PARTNERS: '/app/partners',
+  STOCKISTS: '/app/stockists',
   DISTRIBUTORS: '/app/distributors',
   DEALERS: '/app/dealers',
   EDIT_DEALER: '/app/dealers/edit/:id',
   USERS: '/app/users',
   PENDING_USERS: '/app/pending-users',
   USER_SEARCH: '/app/user-search',
+
+  // Distribution Network & Operations
+  TERRITORIES: '/app/territories',
+  INVENTORY: '/app/inventory',
+  COMMISSIONS: '/app/commissions',
+  NOTIFICATIONS: '/app/notifications',
 
   // Actions
   ADD_PARTNER: '/app/add-partner',
@@ -31,6 +38,7 @@ export const ROUTE_PATHS = {
 
   // Customer & Finance
   CUSTOMERS: '/app/customers',
+  EMI_SAFE: '/app/emi-safe',
   LOANS: '/app/loans',
   DEVICES: '/app/devices',
   DEVICE_CONTROL: '/app/users/:id/device-control',
@@ -40,6 +48,7 @@ export const ROUTE_PATHS = {
 
   // Reports Submenu
   REPORTS: '/app/reports',
+  REPORT_STOCKIST_LOW_KEY: '/app/reports/stockist-low-key',
   REPORT_DISTRIBUTOR_LOW_KEY: '/app/reports/distributor-low-key',
   REPORT_DEALER_LOW_KEY: '/app/reports/dealer-low-key',
   REPORT_TRANSFER: '/app/reports/transfer',
