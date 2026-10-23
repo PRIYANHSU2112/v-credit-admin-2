@@ -2,12 +2,15 @@
  * Global Application Configuration
  */
 
+const rawApiUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3005/api').trim().replace(/\/+$/, '')
+const normalizedApiBaseUrl = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`
+
 export const APP_CONFIG = {
   name: 'V-Credit',
   fullName: 'V-Credit Enterprise Admin',
   description: 'Device Finance & Digital License Distribution Console',
   version: '1.0.0',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3005/api',
+  apiBaseUrl: normalizedApiBaseUrl,
   isMockEnabled: import.meta.env.VITE_ENABLE_MOCK === 'true',
   storageKeys: {
     token: 'v_credit_auth_token',
