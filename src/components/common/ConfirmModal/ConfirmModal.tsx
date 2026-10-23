@@ -4,14 +4,16 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
-export type ConfirmVariant = 'danger' | 'warning' | 'info'
+export type ConfirmVariant = 'danger' | 'warning' | 'info' | 'primary'
 
 interface ConfirmModalProps {
   isOpen: boolean
-  onClose: () => void
+  onClose?: () => void
+  onCancel?: () => void
   onConfirm: () => void
   title: string
-  message: string | React.ReactNode
+  message?: string | React.ReactNode
+  description?: string | React.ReactNode
   confirmText?: string
   cancelText?: string
   variant?: ConfirmVariant
@@ -21,37 +23,44 @@ interface ConfirmModalProps {
 export function ConfirmModal({
   isOpen,
   onClose,
+  onCancel,
   onConfirm,
   title,
   message,
+  description,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'danger',
   isLoading = false,
 }: ConfirmModalProps) {
+  const handleClose = onCancel || onClose || (() => {})
+  const displayMessage = description || message
+
   const icons = {
     danger: <AlertCircle className="h-6 w-6 text-rose-500" />,
     warning: <AlertTriangle className="h-6 w-6 text-amber-500" />,
     info: <Info className="h-6 w-6 text-primary" />,
+    primary: <Info className="h-6 w-6 text-primary" />,
   }
 
   const bgClasses = {
     danger: 'bg-rose-500/10 text-rose-500',
     warning: 'bg-amber-500/10 text-amber-500',
     info: 'bg-primary/10 text-primary',
+    primary: 'bg-primary/10 text-primary',
   }
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       size="sm"
       footer={
         <>
           <Button
             variant="outline"
             size="sm"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isLoading}
           >
             {cancelText}
@@ -80,7 +89,7 @@ export function ConfirmModal({
         <div className="space-y-1">
           <h3 className="text-base font-bold text-foreground">{title}</h3>
           <div className="text-xs text-muted-foreground leading-relaxed">
-            {message}
+            {displayMessage}
           </div>
         </div>
       </div>

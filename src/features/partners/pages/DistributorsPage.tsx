@@ -1,49 +1,52 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Key, Eye, LogIn, Building2, Users, Loader2, X, Sparkles } from 'lucide-react'
-import { useAppSelector } from '@/app/store/hooks'
+import { useAppSelector, useAppDispatch } from '@/app/store/hooks'
 import { useGetDistributorsQuery } from '@/features/partners/api/partnersApi'
 import {
   useGetStockistsQuery,
   useTransferKeyBatchMutation,
+  useImpersonateUserMutation,
 } from '@/features/enterprise/api/enterpriseApi'
-import { MOCK_DISTRIBUTORS, type DistributorRecord } from '@/mocks/mockSeedData'
+import { setCredentials } from '@/features/auth/slices/authSlice'
+import type { DistributorRecord } from '../types'
 import { KeyStatusModal, type KeyStatusData } from '@/components/modals/KeyStatusModal'
 import { KeysReturnModal } from '@/components/modals/KeysReturnModal'
 import { DistributorDetailsModal } from '@/components/modals/DistributorDetailsModal'
 import { toast } from 'sonner'
 
 export default function DistributorsPage() {
+  const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const role = user?.role || 'super_admin'
 
-  const { data: apiResponse } = useGetDistributorsQuery()
+  const { data: apiResponse, isLoading, isFetching } = useGetDistributorsQuery()
+  const [impersonateUser] = useImpersonateUserMutation()
   const rawList = apiResponse?.data && Array.isArray(apiResponse.data) ? apiResponse.data : []
 
   const distributors: DistributorRecord[] = useMemo(() => {
-    if (rawList.length > 0) {
-      return rawList.map((d) => ({
-        id: d.id,
-        agency: d.name,
-        name: d.name,
-        phone: d.phone,
-        email: d.email,
-        stockist: d.stockist || d.parentName || 'Super Admin',
-        superStockiest: d.stockist || d.parentName || 'Super Admin',
-        city: d.city || '—',
-        state: d.state || 'Active',
-        lastBillingDate: d.onboarded || '—',
-        availableKeys: d.available || 0,
-        available: d.available || 0,
-        usedKeys: (d.keys || 0) - (d.available || 0),
-        totalKeys: d.keys || 0,
-        keys: d.keys || 0,
-        iphoneKeys: 0,
-        devices: d.dealers || 0,
-        status: (d.status === 'Active' || d.status === 'active' ? 'active' : 'inactive') as 'active' | 'inactive',
-        keyBalance: d.available || 0,
-      }))
-    }
-    return MOCK_DISTRIBUTORS
+    return rawList.map((d) => ({
+      id: d.id,
+      _id: d._id,
+      entityCode: d.entityCode,
+      agency: d.name,
+      name: d.name,
+      phone: d.phone || '—',
+      email: d.email,
+      stockist: d.stockist || d.parentName || 'Super Admin',
+      superStockiest: d.stockist || d.parentName || 'Super Admin',
+      city: d.city || '—',
+      state: d.state || 'Active',
+      lastBillingDate: d.onboarded || '—',
+      availableKeys: d.available || 0,
+      available: d.available || 0,
+      usedKeys: (d.keys || 0) - (d.available || 0),
+      totalKeys: d.keys || 0,
+      keys: d.keys || 0,
+      iphoneKeys: 0,
+      devices: d.dealers || 0,
+      status: (d.status === 'Active' || d.status === 'active' ? 'active' : 'inactive') as 'active' | 'inactive',
+      keyBalance: d.available || 0,
+    }))
   }, [rawList])
 
   // Radio button search filter mode matching DealersPage: 'stockist' | 'dist_info' | 'city_state'
@@ -192,6 +195,34 @@ export default function DistributorsPage() {
     } catch {
       toast.success(`Successfully allocated ${allocateCount} license keys to ${selectedDistributorForAllocate.agency}!`)
       setIsAllocateModalOpen(false)
+    }
+  }
+
+  const handleImpersonate = async (d: DistributorRecord) => {
+    try {
+      const res = await impersonateUser({ targetUserId: d._id || d.id }).unwrap()
+      if (res.token) {
+        dispatch(
+          setCredentials({
+            token: res.token,
+            user: {
+              id: res.user?._id || res.user?.id || d.id,
+              name: res.user?.name || d.agency,
+              email: res.user?.email || d.email || '',
+              phone: res.user?.phone || d.phone || '',
+              role: 'distributor',
+              parentName: d.stockist,
+              parentId: d.superStockiest,
+              status: 'active',
+              createdAt: res.user?.createdAt || new Date().toISOString(),
+              availableKeys: res.user?.keys || d.availableKeys || 0,
+            },
+          })
+        )
+        toast.success(`Logged in as distributor: ${d.agency}`)
+      }
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Impersonation failed')
     }
   }
 
@@ -467,9 +498,18 @@ export default function DistributorsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredDistributors.length === 0 ? (
+            {isLoading ? (
               <tr>
-                <td colSpan={role === 'super_admin' ? 11 : 10} className="text-center py-8 text-gray-400">
+                <td colSpan={role === 'super_admin' ? 11 : 10} className="text-center py-12">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                    <span className="text-sm font-medium">Loading distributors from server...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredDistributors.length === 0 ? (
+              <tr>
+                <td colSpan={role === 'super_admin' ? 11 : 10} className="text-center py-8 text-muted-foreground">
                   No data available in table
                 </td>
               </tr>
@@ -493,8 +533,8 @@ export default function DistributorsPage() {
                   <td>
                     <button
                       type="button"
-                      onClick={() => toast.success(`Impersonating ${d.agency} login session...`)}
-                      className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                      onClick={() => handleImpersonate(d)}
+                      className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                       title="Login as Distributor"
                     >
                       <LogIn className="h-4 w-4" />

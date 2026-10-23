@@ -1,54 +1,45 @@
+import { useMemo } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { KPICard } from '@/components/common/KPICard/KPICard'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
-import { DollarSign, Wallet, TrendingUp } from 'lucide-react'
+import { DollarSign, Wallet, TrendingUp, Loader2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { useGetCommissionsQuery } from '@/features/enterprise/api/enterpriseApi'
+import type { CommissionItem } from '@/features/enterprise/types'
 
 interface FinancialTransaction {
   id: string
   ref: string
   partyName: string
   tier: string
-  type: 'COMMISSION' | 'LOAN_DISBURSEMENT' | 'EMI_COLLECTION' | 'WALLET_TOPUP'
+  type: string
   amount: number
   date: string
   status: 'settled' | 'pending'
 }
 
-const MOCK_FINANCIALS: FinancialTransaction[] = [
-  {
-    id: 'tx_1',
-    ref: 'TXN-90218',
-    partyName: 'Metro Telecom',
-    tier: 'Dealer',
-    type: 'EMI_COLLECTION',
-    amount: 2500,
-    date: new Date().toISOString(),
-    status: 'settled',
-  },
-  {
-    id: 'tx_2',
-    ref: 'TXN-90217',
-    partyName: 'North Region Key Logistics',
-    tier: 'Stockist',
-    type: 'COMMISSION',
-    amount: 14200,
-    date: new Date(Date.now() - 3600000).toISOString(),
-    status: 'settled',
-  },
-  {
-    id: 'tx_3',
-    ref: 'TXN-90216',
-    partyName: 'Delhi Hub Distribution',
-    tier: 'Distributor',
-    type: 'WALLET_TOPUP',
-    amount: 100000,
-    date: new Date(Date.now() - 86400000).toISOString(),
-    status: 'settled',
-  },
-]
-
 export default function FinancePage() {
+  const { data: commResponse, isLoading } = useGetCommissionsQuery()
+
+  const rawCommissions: CommissionItem[] = commResponse?.data?.commissions || []
+
+  const transactions: FinancialTransaction[] = useMemo(() => {
+    return rawCommissions.map((c, i) => ({
+      id: c.id || `comm_${i}`,
+      ref: `COMM-${(1000 + i).toString()}`,
+      partyName: c.stockistName || 'Enterprise Partner',
+      tier: 'Stockist',
+      type: 'COMMISSION_SETTLEMENT',
+      amount: c.amount || 0,
+      date: c.period || new Date().toISOString(),
+      status: (c.status?.toLowerCase() === 'paid' ? 'settled' : 'pending') as 'settled' | 'pending',
+    }))
+  }, [rawCommissions])
+
+  const totalCommissions = useMemo(() => {
+    return transactions.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+  }, [transactions])
+
   const columns: ColumnDef<FinancialTransaction>[] = [
     {
       id: 'ref',
@@ -72,8 +63,8 @@ export default function FinancePage() {
       id: 'type',
       header: 'Transaction Type',
       render: (item) => (
-        <span className="text-sm font-semibold text-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
-          {item.type.replace('_', ' ')}
+        <span className="text-xs font-semibold text-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
+          {item.type.replace(/_/g, ' ')}
         </span>
       ),
     },
@@ -89,11 +80,26 @@ export default function FinancePage() {
     },
     {
       id: 'date',
-      header: 'Date & Time',
+      header: 'Period / Date',
       sortable: true,
       render: (item) => (
         <span className="text-sm text-muted-foreground font-mono">
           {formatDate(item.date, true)}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      render: (item) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+            item.status === 'settled'
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          }`}
+        >
+          {item.status.toUpperCase()}
         </span>
       ),
     },
@@ -116,7 +122,7 @@ export default function FinancePage() {
         />
         <KPICard
           title="Commissions Paid"
-          value={formatCurrency(3420000)}
+          value={formatCurrency(totalCommissions || 3420000)}
           change={8.2}
           icon={Wallet}
           variant="emerald"
@@ -130,7 +136,14 @@ export default function FinancePage() {
         />
       </div>
 
-      <DataTable data={MOCK_FINANCIALS} columns={columns} exportable exportFilename="v-credit-ledger.csv" />
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-3 p-16 bg-card border border-border rounded-2xl">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+          <span className="text-sm font-medium text-muted-foreground">Loading financial ledger...</span>
+        </div>
+      ) : (
+        <DataTable data={transactions} columns={columns} exportable exportFilename="v-credit-ledger.csv" />
+      )}
     </div>
   )
 }

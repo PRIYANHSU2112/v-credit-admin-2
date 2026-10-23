@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Key, AlertCircle, Loader2, RefreshCw, Download, ShieldAlert } from 'lucide-react'
 import { useGetLowKeyReportsQuery } from '@/features/reports/api/reportsApi'
+import { useGetStockistsQuery } from '@/features/partners/api/partnersApi'
 import type { LowKeyPartnerItem } from '@/features/reports/types'
 import { useDebounce } from '@/hooks/useDebounce'
 import { KeyStatusModal, type KeyStatusData } from '@/components/modals/KeyStatusModal'
@@ -10,6 +11,7 @@ import { toast } from 'sonner'
 export default function DistributorLowKeyReportPage() {
   const [onlyZeroKeys, setOnlyZeroKeys] = useState(false)
   const [threshold, setThreshold] = useState<number>(40)
+  const [selectedStockistId, setSelectedStockistId] = useState<string>('all')
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [tableSearch, setTableSearch] = useState('')
@@ -17,6 +19,10 @@ export default function DistributorLowKeyReportPage() {
 
   // 350ms search debounce
   const debouncedSearch = useDebounce(tableSearch, 350)
+
+  // Live stockists query for dynamic filter dropdown
+  const { data: stockistsRes } = useGetStockistsQuery()
+  const stockistsList = stockistsRes?.data && Array.isArray(stockistsRes.data) ? stockistsRes.data : []
 
   // Live RTK Query connection
   const activeThreshold = onlyZeroKeys ? 0 : threshold
@@ -33,11 +39,13 @@ export default function DistributorLowKeyReportPage() {
     page: currentPage,
     limit: pageSize,
     search: debouncedSearch.trim() || undefined,
+    parentId: selectedStockistId !== 'all' ? selectedStockistId : undefined,
   })
 
   // Modals state
   const [keyStatusData, setKeyStatusData] = useState<KeyStatusData | null>(null)
   const [isKeyStatusOpen, setIsKeyStatusOpen] = useState(false)
+  const [returnDistributorId, setReturnDistributorId] = useState<string>('')
   const [returnDistributor, setReturnDistributor] = useState<string>('')
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
 
@@ -64,6 +72,7 @@ export default function DistributorLowKeyReportPage() {
   }
 
   const handleOpenReturn = (d: LowKeyPartnerItem) => {
+    setReturnDistributorId(d.id || (d as any)._id)
     setReturnDistributor(d.agency || d.name)
     setIsReturnModalOpen(true)
   }
@@ -149,6 +158,24 @@ export default function DistributorLowKeyReportPage() {
               <option value={20}>&le; 20 Keys</option>
               <option value={40}>&le; 40 Keys</option>
               <option value={100}>&le; 100 Keys</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">Stockist:</span>
+            <select
+              value={selectedStockistId}
+              onChange={(e) => {
+                setSelectedStockistId(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground cursor-pointer font-medium"
+            >
+              <option value="all">All Regional Stockists</option>
+              {stockistsList.map((s: any) => (
+                <option key={s._id || s.id} value={s._id || s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -435,6 +462,7 @@ export default function DistributorLowKeyReportPage() {
         isOpen={isReturnModalOpen}
         onClose={() => setIsReturnModalOpen(false)}
         distributorName={returnDistributor}
+        partnerId={returnDistributorId}
         onSuccess={() => refetch()}
       />
     </div>

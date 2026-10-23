@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Plus } from 'lucide-react'
-import type { DealerRecord, FollowupRemark } from '@/mocks/mockSeedData'
+import type { DealerRecord, FollowupRemark } from '@/features/partners/types'
 import { toast } from 'sonner'
 
 interface DealerFollowupModalProps {

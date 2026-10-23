@@ -1,6 +1,6 @@
 import { Modal } from '@/components/ui/Modal'
 import { Download } from 'lucide-react'
-import type { DistributorRecord } from '@/mocks/mockSeedData'
+import type { DistributorRecord } from '@/features/partners/types'
 import { toast } from 'sonner'
 
 interface DistributorDetailsModalProps {

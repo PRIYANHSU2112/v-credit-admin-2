@@ -59,6 +59,7 @@ export interface GetTransferReportsParams {
   keyType?: string
   type?: string
   role?: string
+  partnerId?: string
 }
 
 export interface GetLowKeyReportsParams {
@@ -67,6 +68,7 @@ export interface GetLowKeyReportsParams {
   search?: string
   threshold?: number
   role?: 'stockist' | 'distributor' | 'dealer'
+  parentId?: string
 }
 
 export interface ReportsApiResponse<T> {

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Printer, AlertCircle, Loader2, RefreshCw, FileText } from 'lucide-react'
 import { useGetTransferReportsQuery } from '@/features/reports/api/reportsApi'
+import { useGetDistributorsQuery, useGetDealersQuery } from '@/features/partners/api/partnersApi'
 import type { TransferReportItem } from '@/features/reports/types'
 import { useDebounce } from '@/hooks/useDebounce'
 import { InvoiceReceiptModal } from '@/components/modals/InvoiceReceiptModal'
@@ -8,6 +9,7 @@ import { toast } from 'sonner'
 
 export default function IphoneTransferReportPage() {
   const [activeTab, setActiveTab] = useState<'stockist_dist' | 'dist_dealer'>('dist_dealer')
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all')
   const [fromDate, setFromDate] = useState('2026-01-14')
   const [toDate, setToDate] = useState('2026-10-15')
   const [appliedFromDate, setAppliedFromDate] = useState<string | undefined>(undefined)
@@ -18,6 +20,13 @@ export default function IphoneTransferReportPage() {
 
   // 350ms search debounce
   const debouncedSearch = useDebounce(tableSearch, 350)
+
+  // Live Partner options for dynamic dropdown filter
+  const { data: distRes } = useGetDistributorsQuery()
+  const { data: dealerRes } = useGetDealersQuery()
+  const distributorsList = distRes?.data && Array.isArray(distRes.data) ? distRes.data : []
+  const dealersList = dealerRes?.data && Array.isArray(dealerRes.data) ? dealerRes.data : []
+  const currentPartnerOptions = activeTab === 'stockist_dist' ? distributorsList : dealersList
 
   // Live RTK Query connection
   const {
@@ -35,6 +44,7 @@ export default function IphoneTransferReportPage() {
     toDate: appliedToDate,
     type: activeTab,
     keyType: 'iphone',
+    partnerId: selectedPartnerId !== 'all' ? selectedPartnerId : undefined,
   })
 
   // Invoice Receipt Modal state
@@ -121,6 +131,7 @@ export default function IphoneTransferReportPage() {
             type="button"
             onClick={() => {
               setActiveTab('stockist_dist')
+              setSelectedPartnerId('all')
               setCurrentPage(1)
             }}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
@@ -137,6 +148,7 @@ export default function IphoneTransferReportPage() {
             type="button"
             onClick={() => {
               setActiveTab('dist_dealer')
+              setSelectedPartnerId('all')
               setCurrentPage(1)
             }}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
@@ -204,8 +216,31 @@ export default function IphoneTransferReportPage() {
         </div>
       )}
 
-      {/* Date Filters */}
-      <div className="flex flex-wrap items-end gap-4 bg-muted/30 border border-border/60 rounded-xl p-4 max-w-3xl">
+      {/* Date & Partner Filters */}
+      <div className="flex flex-wrap items-end gap-4 bg-muted/30 border border-border/60 rounded-xl p-4 max-w-4xl">
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-primary">
+            {activeTab === 'stockist_dist' ? 'Distributor:' : 'Dealer Outlet:'}
+          </label>
+          <select
+            value={selectedPartnerId}
+            onChange={(e) => {
+              setSelectedPartnerId(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="h-9 rounded-lg border border-border px-3 text-xs bg-background text-foreground cursor-pointer font-medium min-w-[180px]"
+          >
+            <option value="all">
+              All {activeTab === 'stockist_dist' ? 'Distributors' : 'Dealers'}
+            </option>
+            {currentPartnerOptions.map((p: any) => (
+              <option key={p._id || p.id} value={p._id || p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="space-y-1">
           <label className="text-xs font-semibold text-primary">From :</label>
           <input

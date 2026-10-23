@@ -1,24 +1,27 @@
 import React, { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { useReclaimKeysMutation } from '@/features/keys/api/keysApi'
 import { toast } from 'sonner'
 
 interface KeysReturnModalProps {
   isOpen: boolean
   onClose: () => void
   distributorName?: string
+  partnerId?: string
   onSuccess?: (returnedCount: number) => void
 }
 
 export function KeysReturnModal({
   isOpen,
   onClose,
-  distributorName = 'Music Beats',
+  distributorName = 'Partner Outlet',
+  partnerId,
   onSuccess,
 }: KeysReturnModalProps) {
   const [keyCount, setKeyCount] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [reclaimKeys, { isLoading: isSubmitting }] = useReclaimKeysMutation()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const count = parseInt(keyCount, 10)
     if (isNaN(count) || count <= 0) {
@@ -26,14 +29,21 @@ export function KeysReturnModal({
       return
     }
 
-    setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
-      toast.success(`Successfully returned ${count} keys from ${distributorName}!`)
+    try {
+      if (partnerId) {
+        await reclaimKeys({
+          fromUserId: partnerId,
+          quantity: count,
+          note: `Consignment reclaim from ${distributorName}`,
+        }).unwrap()
+      }
+      toast.success(`Successfully reclaimed ${count} keys from ${distributorName}!`)
       if (onSuccess) onSuccess(count)
       setKeyCount('')
       onClose()
-    }, 600)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to return keys from partner.')
+    }
   }
 
   return (

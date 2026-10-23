@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
-import {
-  CheckCircle2,
-  Lock,
-  Unlock,
-  AlertCircle,
-} from 'lucide-react'
+/**
+ * LoansPage — Real API Integration
+ * Uses RTK Query /api/customerLoan with server-side pagination.
+ * All MOCK_LOANS removed. Optimistic lock/unlock. Bounce mutation.
+ * Follows optimize.md: skeleton, debounce, pagination, useCallback, error state.
+ */
+import { useState, useMemo, useCallback } from 'react'
+import { CheckCircle2, Lock, Unlock, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
 import { FilterBar } from '@/components/common/FilterBar/FilterBar'
@@ -15,7 +16,14 @@ import { Input } from '@/components/ui/Input'
 import { useAppSelector } from '@/app/store/hooks'
 import { hasPermission } from '@/config/permissions'
 import { formatCurrency, formatDate, maskImei, maskPhone } from '@/lib/utils'
-import { MOCK_LOANS } from '../api/loansApi'
+import {
+  useGetLoansQuery,
+  useRecordPaymentMutation,
+  useLockDeviceByLoanMutation,
+  useUnlockDeviceByLoanMutation,
+  useMarkBounceMutation,
+} from '../api/loansApi'
+import { useDebounce } from '@/hooks/useDebounce'
 import type { LoanAccount } from '../types'
 import { toast } from 'sonner'
 
@@ -24,122 +32,103 @@ export default function LoansPage() {
   const canPay = hasPermission(user?.role, 'loans:pay')
   const canLock = hasPermission(user?.role, 'devices:command:lock')
 
-  const [loans, setLoans] = useState<LoanAccount[]>(MOCK_LOANS)
+  // ── Filters & Pagination ───────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
-  // Payment modal state
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // ── RTK Query ──────────────────────────────────────────────────────────────
+  const {
+    data: loansData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useGetLoansQuery(
+    {
+      page: currentPage,
+      limit: pageSize,
+      search: debouncedSearch.trim() || undefined,
+      status: deviceFilter !== 'all' ? deviceFilter : undefined,
+    },
+    { refetchOnMountOrArgChange: true }
+  )
+
+  const loans = useMemo(() => loansData?.data || [], [loansData?.data])
+  const pagination = loansData?.pagination
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
+  const [recordPayment, { isLoading: isPaying }] = useRecordPaymentMutation()
+  const [lockDevice, { isLoading: isLocking }] = useLockDeviceByLoanMutation()
+  const [unlockDevice, { isLoading: isUnlocking }] = useUnlockDeviceByLoanMutation()
+  const [markBounce, { isLoading: isBouncing }] = useMarkBounceMutation()
+
+  // ── Payment Modal ──────────────────────────────────────────────────────────
   const [paymentLoan, setPaymentLoan] = useState<LoanAccount | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CASH' | 'NET_BANKING'>('UPI')
   const [txnRef, setTxnRef] = useState('')
 
-  const filteredLoans = useMemo(() => {
-    return loans.filter((l) => {
-      const q = searchQuery.toLowerCase().trim()
-      const matchesSearch =
-        q === '' ||
-        l.loanNumber.toLowerCase().includes(q) ||
-        l.customerName.toLowerCase().includes(q) ||
-        l.customerPhone.includes(q) ||
-        l.imei.includes(q) ||
-        (l.mobileBrand && l.mobileBrand.toLowerCase().includes(q)) ||
-        l.deviceModel.toLowerCase().includes(q)
-
-      let matchesFilter = true
-      if (deviceFilter === 'running') {
-        matchesFilter = l.installationType === 'Old/Running Phone' || l.status === 'current'
-      } else if (deviceFilter === 'new') {
-        matchesFilter = l.installationType === 'New Phone'
-      } else if (deviceFilter === 'locked') {
-        matchesFilter = l.deviceUnlockStatus === 'LOCKED' || l.status === 'overdue'
-      } else if (deviceFilter === 'unlocked') {
-        matchesFilter = l.deviceUnlockStatus === 'UNLOCKED'
-      } else if (deviceFilter === 'settled') {
-        matchesFilter = l.loanStatus === 'CLOSED' || l.status === 'settled'
-      }
-
-      return matchesSearch && matchesFilter
-    })
-  }, [loans, searchQuery, deviceFilter])
-
-  const handleOpenPayment = (loan: LoanAccount) => {
+  const handleOpenPayment = useCallback((loan: LoanAccount) => {
     setPaymentLoan(loan)
     setPaymentAmount(String(loan.monthlyEmi))
     setTxnRef(`UPI-${Date.now().toString().slice(-6)}`)
-  }
+  }, [])
 
-  const handleToggleLock = (loan: LoanAccount) => {
-    const isCurrentlyLocked = loan.deviceUnlockStatus === 'LOCKED'
-    const newUnlockState = isCurrentlyLocked ? 'UNLOCKED' : 'LOCKED'
-
-    setLoans(
-      loans.map((l) =>
-        l.id === loan.id
-          ? {
-              ...l,
-              deviceUnlockStatus: newUnlockState,
-            }
-          : l
-      )
-    )
-
-    if (newUnlockState === 'LOCKED') {
-      toast.error(`Remote LOCK signal broadcast to ${loan.customerName}'s phone (${loan.imei})`, {
-        description: 'MDM overlay activated. Phone features restricted until repayment.',
-      })
-    } else {
-      toast.success(`Remote UNLOCK signal dispatched to ${loan.customerName}'s device!`)
+  const handleToggleLock = useCallback(async (loan: LoanAccount) => {
+    const isLocked = loan.deviceUnlockStatus === 'LOCKED'
+    const targetLoanId = loan._id || loan.id
+    try {
+      if (isLocked) {
+        await unlockDevice({ loanId: targetLoanId }).unwrap()
+        toast.success(`Remote UNLOCK dispatched to ${loan.customerName}'s device!`)
+      } else {
+        await lockDevice({ loanId: targetLoanId }).unwrap()
+        toast.error(`Remote LOCK signal broadcast to ${loan.customerName}'s phone`, {
+          description: 'MDM overlay activated. Phone features restricted until repayment.',
+        })
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Device command failed')
     }
-  }
+  }, [lockDevice, unlockDevice])
 
-  const handleMarkBounce = (loan: LoanAccount) => {
-    setLoans(
-      loans.map((l) =>
-        l.id === loan.id
-          ? {
-              ...l,
-              status: 'overdue',
-              deviceUnlockStatus: 'LOCKED',
-              overdueDays: Math.max(l.overdueDays, 1) + 7,
-            }
-          : l
-      )
-    )
-    toast.error(`Auto-debit / NACH failure marked for ${loan.customerName}!`, {
-      description: '₹400 bounce charge applied. Device lock command queued.',
-    })
-  }
+  const handleMarkBounce = useCallback(async (loan: LoanAccount) => {
+    try {
+      await markBounce({ loanId: loan._id || loan.id, bounceCharge: 400 }).unwrap()
+      toast.error(`Auto-debit / NACH failure marked for ${loan.customerName}!`, {
+        description: '₹400 bounce charge applied. Device lock command queued.',
+      })
+    } catch (err: any) {
+      toast.error(err?.message || 'Bounce mark failed')
+    }
+  }, [markBounce])
 
-  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+  const handleRecordPaymentSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!paymentLoan) return
+    try {
+      await recordPayment({
+        loanId: paymentLoan._id || paymentLoan.id,
+        amount: Number(paymentAmount),
+        paymentMethod,
+        transactionRef: txnRef,
+      }).unwrap()
+      toast.success(`Payment of ${formatCurrency(Number(paymentAmount))} recorded!`, {
+        description: `Loan updated. Connected device unlocked.`,
+      })
+      setPaymentLoan(null)
+    } catch (err: any) {
+      toast.error(err?.message || 'Payment recording failed')
+    }
+  }, [paymentLoan, paymentAmount, paymentMethod, txnRef, recordPayment])
 
-    const updatedPaid = paymentLoan.paidEmis + 1
-    const isNowSettled = updatedPaid >= paymentLoan.totalEmis
-
-    setLoans(
-      loans.map((l) =>
-        l.id === paymentLoan.id
-          ? {
-              ...l,
-              paidEmis: updatedPaid,
-              status: isNowSettled ? 'settled' : 'current',
-              deviceUnlockStatus: isNowSettled ? 'UNLOCKED' : l.deviceUnlockStatus,
-              overdueDays: 0,
-            }
-          : l
-      )
-    )
-
-    toast.success(`Payment of ${formatCurrency(Number(paymentAmount))} recorded!`, {
-      description: `Loan #${paymentLoan.loanNumber} updated. Connected device unlocked.`,
-    })
-
-    setPaymentLoan(null)
-  }
-
-  const columns: ColumnDef<LoanAccount>[] = [
+  // ── Columns ────────────────────────────────────────────────────────────────
+  const columns: ColumnDef<LoanAccount>[] = useMemo(() => [
     {
       id: 'loanNumber',
       header: 'Loan & Device',
@@ -147,9 +136,7 @@ export default function LoansPage() {
       render: (item) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-sm text-foreground">
-              {item.loanNumber}
-            </span>
+            <span className="font-mono font-bold text-sm text-foreground">{item.loanNumber}</span>
             <span className="text-xs text-muted-foreground font-medium">({item.dealerName})</span>
           </div>
           <p className="text-sm text-foreground font-semibold flex items-center gap-1.5">
@@ -181,12 +168,8 @@ export default function LoansPage() {
       sortable: true,
       render: (item) => (
         <div className="space-y-0.5">
-          <span className="font-bold text-foreground font-mono text-sm">
-            {formatCurrency(item.totalLoanAmount)}
-          </span>
-          <p className="text-xs text-muted-foreground font-medium">
-            EMI: {formatCurrency(item.monthlyEmi)}/mo
-          </p>
+          <span className="font-bold text-foreground font-mono text-sm">{formatCurrency(item.totalLoanAmount)}</span>
+          <p className="text-xs text-muted-foreground font-medium">EMI: {formatCurrency(item.monthlyEmi)}/mo</p>
         </div>
       ),
     },
@@ -194,20 +177,16 @@ export default function LoansPage() {
       id: 'progress',
       header: 'EMI Progress',
       render: (item) => {
-        const pct = Math.round((item.paidEmis / item.totalEmis) * 100)
+        const pct = item.totalEmis > 0 ? Math.round((item.paidEmis / item.totalEmis) * 100) : 0
         return (
           <div className="space-y-1.5 w-36">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground">
-                {item.paidEmis}/{item.totalEmis} Paid
-              </span>
+              <span className="font-bold text-foreground">{item.paidEmis}/{item.totalEmis} Paid</span>
               <span className="text-muted-foreground font-semibold">{pct}%</span>
             </div>
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all duration-300 rounded-full ${
-                  item.status === 'overdue' ? 'bg-rose-500' : 'bg-primary'
-                }`}
+                className={`h-full transition-all duration-300 rounded-full ${item.status === 'overdue' ? 'bg-rose-500' : 'bg-primary'}`}
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -217,17 +196,13 @@ export default function LoansPage() {
     },
     {
       id: 'due',
-      header: 'Next Due Date',
+      header: 'Next Due',
       sortable: true,
       render: (item) => (
         <div className="space-y-0.5">
-          <span className="text-foreground font-medium text-sm">
-            {formatDate(item.nextDueDate)}
-          </span>
+          <span className="text-foreground font-medium text-sm">{formatDate(item.nextDueDate)}</span>
           {item.overdueDays > 0 ? (
-            <p className="text-xs text-rose-500 font-bold">
-              {item.overdueDays}d Overdue
-            </p>
+            <p className="text-xs text-rose-500 font-bold">{item.overdueDays}d Overdue</p>
           ) : (
             <p className="text-xs text-emerald-500 font-medium">On Schedule</p>
           )}
@@ -238,22 +213,12 @@ export default function LoansPage() {
       id: 'lockStatus',
       header: 'Device Lock',
       render: (item) => (
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
-            item.deviceUnlockStatus === 'LOCKED'
-              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-          }`}
-        >
-          {item.deviceUnlockStatus === 'LOCKED' ? (
-            <>
-              <Lock className="h-3.5 w-3.5" /> LOCKED
-            </>
-          ) : (
-            <>
-              <Unlock className="h-3.5 w-3.5" /> UNLOCKED
-            </>
-          )}
+        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
+          item.deviceUnlockStatus === 'LOCKED'
+            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+            : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+        }`}>
+          {item.deviceUnlockStatus === 'LOCKED' ? <><Lock className="h-3.5 w-3.5" /> LOCKED</> : <><Unlock className="h-3.5 w-3.5" /> UNLOCKED</>}
         </span>
       ),
     },
@@ -273,11 +238,9 @@ export default function LoansPage() {
             <Button
               variant="outline"
               size="xs"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleOpenPayment(item)
-              }}
+              onClick={(e) => { e.stopPropagation(); handleOpenPayment(item) }}
               className="text-xs text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+              disabled={isPaying}
             >
               Collect EMI
             </Button>
@@ -285,12 +248,10 @@ export default function LoansPage() {
           {item.status !== 'settled' && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleMarkBounce(item)
-              }}
-              className="p-1 rounded text-rose-500 hover:bg-rose-500/10 transition-colors"
+              onClick={(e) => { e.stopPropagation(); handleMarkBounce(item) }}
+              className="p-1 rounded text-rose-500 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
               title="Mark Auto-Debit / NACH Bounce (Apply ₹400 penalty)"
+              disabled={isBouncing}
             >
               <AlertCircle className="h-3.5 w-3.5" />
             </button>
@@ -298,22 +259,16 @@ export default function LoansPage() {
           {canLock && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleToggleLock(item)
-              }}
-              className={`p-1 rounded transition-colors ${
+              onClick={(e) => { e.stopPropagation(); handleToggleLock(item) }}
+              className={`p-1 rounded transition-colors disabled:opacity-50 ${
                 item.deviceUnlockStatus === 'LOCKED'
                   ? 'text-emerald-500 hover:bg-emerald-500/10'
                   : 'text-rose-500 hover:bg-rose-500/10'
               }`}
               title={item.deviceUnlockStatus === 'LOCKED' ? 'Remote Unlock' : 'Remote Lock'}
+              disabled={isLocking || isUnlocking}
             >
-              {item.deviceUnlockStatus === 'LOCKED' ? (
-                <Unlock className="h-3.5 w-3.5" />
-              ) : (
-                <Lock className="h-3.5 w-3.5" />
-              )}
+              {item.deviceUnlockStatus === 'LOCKED' ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
             </button>
           )}
           {item.status === 'settled' && (
@@ -324,25 +279,31 @@ export default function LoansPage() {
         </div>
       ),
     },
-  ]
+  ], [canPay, canLock, handleOpenPayment, handleMarkBounce, handleToggleLock, isPaying, isBouncing, isLocking, isUnlocking])
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Loans & EMI Recovery"
-        subtitle="Track customer repayment progress, overdue schedules, and record cash/UPI collections."
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Loans & EMI Recovery"
+          subtitle="Track customer repayment progress, overdue schedules, and record cash/UPI collections."
+        />
+        {isFetching && !isLoading && (
+          <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+        )}
+      </div>
 
       <FilterBar
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1) }}
         searchPlaceholder="Search loan #, customer, phone, IMEI, brand..."
         selectFilters={[
           {
             id: 'deviceCategory',
             label: 'Filter Category',
             value: deviceFilter,
-            onChange: setDeviceFilter,
+            onChange: (v) => { setDeviceFilter(v); setCurrentPage(1) },
             options: [
               { label: 'Running Devices (active loans)', value: 'running' },
               { label: 'New Devices (originated)', value: 'new' },
@@ -352,18 +313,59 @@ export default function LoansPage() {
             ],
           },
         ]}
-        onReset={() => {
-          setSearchQuery('')
-          setDeviceFilter('all')
-        }}
+        onReset={() => { setSearchQuery(''); setDeviceFilter('all'); setCurrentPage(1) }}
       />
 
-      <DataTable
-        data={filteredLoans}
-        columns={columns}
-        exportable
-        exportFilename="v-credit-loans.csv"
-      />
+      {isError ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <AlertCircle className="h-10 w-10 text-rose-500" />
+          <p className="text-base font-bold text-foreground">Failed to load loans</p>
+          <p className="text-sm text-muted-foreground">{(error as any)?.message || 'Server error'}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Retry
+          </Button>
+        </div>
+      ) : (
+        <>
+          <DataTable
+            data={loans}
+            columns={columns}
+            isLoading={isLoading}
+            exportable
+            exportFilename="v-credit-loans.csv"
+          />
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Showing {loans.length} of {pagination.totalItems} loans
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1 || isFetching}
+                >
+                  Previous
+                </Button>
+                <span className="font-medium px-2">
+                  {currentPage} / {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  disabled={currentPage === pagination.totalPages || isFetching}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Record Payment Modal */}
       <Modal
@@ -391,21 +393,12 @@ export default function LoansPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Amount Received (₹ INR)
-              </label>
-              <Input
-                type="number"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                required
-              />
+              <label className="text-xs font-semibold text-foreground">Amount Received (₹ INR)</label>
+              <Input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} required />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Payment Channel
-              </label>
+              <label className="text-xs font-semibold text-foreground">Payment Channel</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
@@ -418,28 +411,16 @@ export default function LoansPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Reference / Receipt ID
-              </label>
-              <Input
-                type="text"
-                value={txnRef}
-                onChange={(e) => setTxnRef(e.target.value)}
-                required
-              />
+              <label className="text-xs font-semibold text-foreground">Reference / Receipt ID</label>
+              <Input type="text" value={txnRef} onChange={(e) => setTxnRef(e.target.value)} required />
             </div>
 
             <div className="pt-4 flex justify-end gap-2 border-t border-border/50">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPaymentLoan(null)}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => setPaymentLoan(null)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Confirm & Unlock Device
+              <Button type="submit" variant="primary" size="sm" disabled={isPaying}>
+                {isPaying ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : 'Confirm & Unlock Device'}
               </Button>
             </div>
           </form>

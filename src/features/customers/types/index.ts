@@ -49,6 +49,9 @@ export interface GetEndUsersParams {
   page?: number
   limit?: number
   search?: string
+  fromDate?: string
+  toDate?: string
+  dealerId?: string
 }
 
 export interface DeviceControlRequest {
@@ -64,3 +67,31 @@ export interface DeviceControlResponse {
     lockStatus: string
   }
 }
+
+export interface EmiSafeUserRecord extends EndUserRecord {
+  unlockCode?: string
+  address?: string
+  fatherName?: string
+  dob?: string
+  aadhaarNumber?: string
+  panNumber?: string
+  devicePolicy?: {
+    isResetAllowed?: boolean
+    isUninstallAllowed?: boolean
+    isDeveloperOptionsBlocked?: boolean
+    isWallpaperEnabled?: boolean
+    wallpaperUrl?: string
+    isWhatsAppBlocked?: boolean
+    isInstagramBlocked?: boolean
+    isSnapchatBlocked?: boolean
+    isYouTubeBlocked?: boolean
+    isFacebookBlocked?: boolean
+    isDialerBlocked?: boolean
+    isMessagesBlocked?: boolean
+    isPlayStoreBlocked?: boolean
+    isChromeBlocked?: boolean
+    isVoiceReminderEnabled?: boolean
+    isLocationEnabled?: boolean
+  }
+}
+

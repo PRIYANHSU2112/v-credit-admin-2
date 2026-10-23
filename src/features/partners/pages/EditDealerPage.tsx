@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { MOCK_DEALERS } from '@/mocks/mockSeedData'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useGetDealersQuery, useResetPartnerPasswordMutation } from '@/features/partners/api/partnersApi'
 import { ROUTE_PATHS } from '@/app/routes/routePaths'
 import { toast } from 'sonner'
 
@@ -9,23 +9,36 @@ export default function EditDealerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  // Find dealer by id or fallback to first dealer (Malviya mobile hub)
-  const initialDealer = MOCK_DEALERS.find((d) => d.id === id) || MOCK_DEALERS[0]
+  const { data: dealersRes, isLoading: isLoadingDealers } = useGetDealersQuery()
+  const [resetPassword] = useResetPartnerPasswordMutation()
+
+  const currentDealer = dealersRes?.data?.find((d) => d.id === id || d._id === id)
 
   // Form State
-  const [dealerName, setDealerName] = useState(initialDealer.dealerName || 'Abhishek malviya')
-  const [lockScreenNumber, setLockScreenNumber] = useState(initialDealer.lockScreenNumber || '9183689544')
-  const [emailId, setEmailId] = useState(initialDealer.email || 'abhimalviya319@gmail.com')
-  const [shop, setShop] = useState(initialDealer.dealerShop || 'Malviya mobile hub')
-  const [password, setPassword] = useState(initialDealer.password || 'Emi@123')
-  const [address, setAddress] = useState(initialDealer.address || 'Bus stand Sukhtawa kalaakhar road sukhtawa')
-  const [city, setCity] = useState(initialDealer.city || 'Betul')
-  const [state, setState] = useState(initialDealer.state || 'Madhya Pradesh')
-  const [district, setDistrict] = useState(initialDealer.district || 'sukhtawa')
-  const [pincode, setPincode] = useState(initialDealer.pincode || '460001')
+  const [dealerName, setDealerName] = useState('')
+  const [lockScreenNumber, setLockScreenNumber] = useState('')
+  const [emailId, setEmailId] = useState('')
+  const [shop, setShop] = useState('')
+  const [password, setPassword] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [district, setDistrict] = useState('')
+  const [pincode, setPincode] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (currentDealer) {
+      setDealerName(currentDealer.name || '')
+      setLockScreenNumber(currentDealer.phone || '')
+      setEmailId(currentDealer.email || '')
+      setShop(currentDealer.agencyName || currentDealer.name || '')
+      setCity(currentDealer.city || '')
+      setState(currentDealer.state || currentDealer.territory || '')
+    }
+  }, [currentDealer])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const cleanedPhone = lockScreenNumber.replace(/\D/g, '')
@@ -41,28 +54,17 @@ export default function EditDealerPage() {
 
     setIsSaving(true)
 
-    setTimeout(() => {
-      setIsSaving(false)
-      // Update in memory
-      initialDealer.dealerName = dealerName
-      initialDealer.name = shop
-      initialDealer.lockScreenNumber = cleanedPhone
-      initialDealer.phone = cleanedPhone
-      initialDealer.email = emailId
-      initialDealer.dealerShop = shop
-      initialDealer.password = password
-      initialDealer.address = address
-      initialDealer.city = city
-      initialDealer.state = state
-      initialDealer.territory = state
-      initialDealer.district = district
-      initialDealer.pincode = pincode
-
-      toast.success(`Dealer details for "${shop}" saved successfully!`, {
-        description: `Credentials and contact information updated for ${initialDealer.entityCode || initialDealer.dealerCode}.`,
-      })
+    try {
+      if (password && id) {
+        await resetPassword({ userId: id, password }).unwrap()
+      }
+      toast.success(`Dealer details for "${shop}" saved successfully!`)
       navigate(ROUTE_PATHS.DEALERS)
-    }, 600)
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to update dealer')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -83,7 +85,7 @@ export default function EditDealerPage() {
           </div>
         </div>
         <span className="text-sm text-muted-foreground font-mono bg-muted px-3 py-1.5 rounded-lg border border-border">
-          Code: {initialDealer.dealerCode || '79746'}
+          Code: {currentDealer?.entityCode || id || '—'}
         </span>
       </div>
 

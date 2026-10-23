@@ -36,7 +36,7 @@ export interface FinancedDevice {
   batteryLevel: number
   lastHeartbeat: string
   loanId: string
-  overdueDays: number
+  overdueDays?: number
   appVersion: string
   devicePolicy?: Partial<DevicePolicy>
   simCardNumber?: string

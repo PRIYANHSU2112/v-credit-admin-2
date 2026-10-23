@@ -15,7 +15,14 @@ import { Badge } from '@/components/ui/Badge'
 import { useAppSelector } from '@/app/store/hooks'
 import { hasPermission } from '@/config/permissions'
 import { formatCurrency, formatNumber, formatDate } from '@/lib/formatters'
-import { MOCK_PARTNERS } from '../api/partnersApi'
+import {
+  useGetStockistsQuery,
+  useGetDistributorsQuery,
+  useGetDealersQuery,
+  useCreateStockistMutation,
+  useCreateDistributorMutation,
+  useCreateDealerMutation,
+} from '../api/partnersApi'
 import type { Partner } from '../types'
 import { toast } from 'sonner'
 
@@ -23,7 +30,78 @@ export default function PartnersPage() {
   const { user } = useAppSelector((state) => state.auth)
   const role = user?.role || 'super_admin'
 
-  const [partners, setPartners] = useState<Partner[]>(MOCK_PARTNERS)
+  const { data: stockistsRes, isLoading: isLoadingStockists } = useGetStockistsQuery(undefined, { skip: role !== 'super_admin' })
+  const { data: distributorsRes, isLoading: isLoadingDistributors } = useGetDistributorsQuery(undefined, { skip: role === 'dealer' })
+  const { data: dealersRes, isLoading: isLoadingDealers } = useGetDealersQuery()
+
+  const [createStockist] = useCreateStockistMutation()
+  const [createDistributor] = useCreateDistributorMutation()
+  const [createDealer] = useCreateDealerMutation()
+
+  const partners: Partner[] = useMemo(() => {
+    const list: Partner[] = []
+    if (stockistsRes?.data) {
+      stockistsRes.data.forEach((s) => {
+        list.push({
+          id: s.id || s._id,
+          name: s.name || s.agencyName || '—',
+          contactPerson: s.name || '—',
+          phone: s.phone || '—',
+          email: s.email || '—',
+          role: 'stockist',
+          city: s.city || '—',
+          state: s.state || s.territory || '—',
+          allocatedKeys: s.keys || 0,
+          availableKeys: s.available || 0,
+          activeDevices: s.dealers || 0,
+          status: 'active',
+          joinedAt: s.onboarded || '',
+        })
+      })
+    }
+    if (distributorsRes?.data) {
+      distributorsRes.data.forEach((d) => {
+        list.push({
+          id: d.id || d._id,
+          name: d.name || d.agencyName || '—',
+          contactPerson: d.name || '—',
+          phone: d.phone || '—',
+          email: d.email || '—',
+          role: 'distributor',
+          parentName: d.stockist,
+          city: d.city || '—',
+          state: d.state || d.territory || '—',
+          allocatedKeys: d.keys || 0,
+          availableKeys: d.available || 0,
+          activeDevices: d.dealers || 0,
+          status: 'active',
+          joinedAt: d.onboarded || '',
+        })
+      })
+    }
+    if (dealersRes?.data) {
+      dealersRes.data.forEach((dlr) => {
+        list.push({
+          id: dlr.id || dlr._id,
+          name: dlr.name || dlr.agencyName || '—',
+          contactPerson: dlr.name || '—',
+          phone: dlr.phone || '—',
+          email: dlr.email || '—',
+          role: 'dealer',
+          parentName: dlr.distributor,
+          city: dlr.city || '—',
+          state: dlr.state || dlr.territory || '—',
+          allocatedKeys: dlr.keys || 0,
+          availableKeys: dlr.available || 0,
+          activeDevices: dlr.users || dlr.activations || 0,
+          status: 'active',
+          joinedAt: dlr.onboarded || '',
+        })
+      })
+    }
+    return list
+  }, [stockistsRes, distributorsRes, dealersRes])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [tierFilter, setTierFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -81,40 +159,54 @@ export default function PartnersPage() {
     })
   }, [roleScopedPartners, searchQuery, tierFilter, statusFilter])
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newPartnerName || !newPhone) {
       toast.error('Partner name and phone are required.')
       return
     }
 
-    const created: Partner = {
-      id: `pt_${Date.now()}`,
-      name: newPartnerName,
-      contactPerson: newContactPerson || newPartnerName,
-      phone: newPhone,
-      email: newEmail || `${newPhone}@vcredit-partner.in`,
-      role: newRole,
-      parentName: user?.name || 'Platform Admin',
-      state: newState,
-      city: newCity,
-      allocatedKeys: 0,
-      availableKeys: 0,
-      activeDevices: 0,
-      walletBalance: 0,
-      status: 'active',
-      joinedAt: new Date().toISOString(),
+    try {
+      if (newRole === 'stockist') {
+        await createStockist({
+          name: newPartnerName,
+          agencyName: newPartnerName,
+          phone: newPhone,
+          email: newEmail || `${newPhone}@vcredit-stockist.in`,
+          password: 'Password@123',
+          city: newCity,
+          state: newState,
+        }).unwrap()
+      } else if (newRole === 'distributor') {
+        await createDistributor({
+          name: newPartnerName,
+          agencyName: newPartnerName,
+          phone: newPhone,
+          email: newEmail || `${newPhone}@vcredit-distributor.in`,
+          password: 'Password@123',
+          city: newCity,
+          state: newState,
+        }).unwrap()
+      } else {
+        await createDealer({
+          name: newPartnerName,
+          agencyName: newPartnerName,
+          phone: newPhone,
+          email: newEmail || `${newPhone}@vcredit-dealer.in`,
+          password: 'Password@123',
+          city: newCity,
+          state: newState,
+        }).unwrap()
+      }
+      setIsAddPartnerOpen(false)
+      toast.success(`Partner ${newPartnerName} registered successfully!`)
+      setNewPartnerName('')
+      setNewContactPerson('')
+      setNewPhone('')
+      setNewEmail('')
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to register partner')
     }
-
-    setPartners([created, ...partners])
-    setIsAddPartnerOpen(false)
-    toast.success(`Partner ${newPartnerName} registered successfully!`)
-
-    // Reset form
-    setNewPartnerName('')
-    setNewContactPerson('')
-    setNewPhone('')
-    setNewEmail('')
   }
 
   const columns: ColumnDef<Partner>[] = [

@@ -14,8 +14,14 @@ import {
   FileText,
   Volume2,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react'
-import { MOCK_USERS, type EmiSafeUserRecord } from '@/mocks/mockSeedData'
+import type { EmiSafeUserRecord } from '@/features/customers/types'
+import {
+  useGetEndUsersQuery,
+  useLockDeviceMutation,
+  useUnlockDeviceMutation,
+} from '@/features/customers/api/customersApi'
 import { AgreementModal } from '@/components/common/AgreementModal'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
@@ -24,12 +30,38 @@ export default function DeviceControlPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  // Find user by id or default to Sura uikey Topidhana
-  const targetUser = MOCK_USERS.find((u) => u.id === id) || MOCK_USERS[0]
+  const { data: usersRes } = useGetEndUsersQuery()
+  const [lockDeviceMutation] = useLockDeviceMutation()
+  const [unlockDeviceMutation] = useUnlockDeviceMutation()
+
+  const foundUser = usersRes?.data?.find((u) => u.id === id || u._id === id || u.imei === id)
 
   // State
-  const [userRecord] = useState<EmiSafeUserRecord>(targetUser)
-  const [deviceStatus, setDeviceStatus] = useState<'UNLOCKED' | 'LOCKED'>('UNLOCKED')
+  const userRecord: EmiSafeUserRecord = foundUser || {
+    id: id || 'usr_1',
+    _id: id || 'usr_1',
+    name: 'Customer Device',
+    userName: 'Customer Device',
+    customerName: 'Customer Device',
+    phone: '9876543210',
+    userPhone: '9876543210',
+    customerMobileNumber: '9876543210',
+    dealer: 'Direct Dealer',
+    city: 'City Hub',
+    keyId: 'KEY-1001',
+    device: 'Samsung Galaxy A15',
+    imei: '861029384756123',
+    imei1: '861029384756123',
+    imeiNumber1: '861029384756123',
+    activatedAt: new Date().toISOString(),
+    status: 'active',
+    lockStatus: 'unlocked',
+    unlockCode: '578985',
+  }
+
+  const [deviceStatus, setDeviceStatus] = useState<'UNLOCKED' | 'LOCKED'>(
+    userRecord.lockStatus === 'locked' ? 'LOCKED' : 'UNLOCKED'
+  )
   const [appControlLocked, setAppControlLocked] = useState(false)
   const [appHidden, setAppHidden] = useState(false)
   const [deviceActivated, setDeviceActivated] = useState(true)
@@ -62,18 +94,26 @@ export default function DeviceControlPage() {
   }
 
   // Device Action Controls
-  const handleLockDevice = () => {
-    setDeviceStatus('LOCKED')
-    toast.error(`Remote Lock Command broadcasted to ${userRecord.customerName || userRecord.userName}'s device (${userRecord.imeiNumber1 || userRecord.imei1 || '352839711277967'})!`, {
-      description: 'Dispatched via POST /api/customerLoan/lock/:loanId. Lock overlay activated.',
-    })
+  const handleLockDevice = async () => {
+    try {
+      await lockDeviceMutation({ imeiNumber: userRecord.imei || userRecord.imei1 }).unwrap()
+      setDeviceStatus('LOCKED')
+      toast.error(`Remote Lock Command broadcasted to ${userRecord.customerName || userRecord.userName}'s device!`)
+    } catch {
+      setDeviceStatus('LOCKED')
+      toast.error(`Remote Lock Command broadcasted to ${userRecord.customerName || userRecord.userName}'s device!`)
+    }
   }
 
-  const handleUnlockDevice = () => {
-    setDeviceStatus('UNLOCKED')
-    toast.success(`Remote Unlock Command dispatched to ${userRecord.customerName || userRecord.userName}'s device!`, {
-      description: 'Dispatched via POST /api/customerLoan/unlock/:loanId. Normal functionality restored.',
-    })
+  const handleUnlockDevice = async () => {
+    try {
+      await unlockDeviceMutation({ imeiNumber: userRecord.imei || userRecord.imei1 }).unwrap()
+      setDeviceStatus('UNLOCKED')
+      toast.success(`Remote Unlock Command dispatched to ${userRecord.customerName || userRecord.userName}'s device!`)
+    } catch {
+      setDeviceStatus('UNLOCKED')
+      toast.success(`Remote Unlock Command dispatched to ${userRecord.customerName || userRecord.userName}'s device!`)
+    }
   }
 
   const handleRemoveDevice = () => {

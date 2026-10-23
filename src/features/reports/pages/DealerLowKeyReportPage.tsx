@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Key, XCircle, CheckCircle2, AlertCircle, Loader2, RefreshCw, Download, ShieldAlert } from 'lucide-react'
+import { Key, AlertCircle, Loader2, RefreshCw, Download, ShieldAlert } from 'lucide-react'
 import { useGetLowKeyReportsQuery } from '@/features/reports/api/reportsApi'
+import { useGetDistributorsQuery } from '@/features/partners/api/partnersApi'
+import { useTransferKeysMutation } from '@/features/keys/api/keysApi'
 import type { LowKeyPartnerItem } from '@/features/reports/types'
 import { useDebounce } from '@/hooks/useDebounce'
 import { KeysReturnModal } from '@/components/modals/KeysReturnModal'
@@ -10,14 +12,21 @@ import { toast } from 'sonner'
 export default function DealerLowKeyReportPage() {
   const [mode, setMode] = useState<'all_low' | 'zero_keys'>('all_low')
   const [threshold, setThreshold] = useState<number>(10)
+  const [selectedDistributorId, setSelectedDistributorId] = useState<string>('all')
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [tableSearch, setTableSearch] = useState('')
   const [keyInputValues, setKeyInputValues] = useState<{ [dealerId: string]: string }>({})
-  const [lockAccessMap, setLockAccessMap] = useState<Record<string, boolean>>({})
 
   // 350ms search debounce
   const debouncedSearch = useDebounce(tableSearch, 350)
+
+  // Live partners query for dynamic filter dropdown
+  const { data: distributorsRes } = useGetDistributorsQuery()
+  const distributorsList = distributorsRes?.data && Array.isArray(distributorsRes.data) ? distributorsRes.data : []
+
+  // Live Key Transfer Mutation for Quick Allocation
+  const [transferKeys, { isLoading: isAllocating }] = useTransferKeysMutation()
 
   // Live RTK Query connection
   const activeThreshold = mode === 'zero_keys' ? 0 : threshold
@@ -34,9 +43,11 @@ export default function DealerLowKeyReportPage() {
     page: currentPage,
     limit: pageSize,
     search: debouncedSearch.trim() || undefined,
+    parentId: selectedDistributorId !== 'all' ? selectedDistributorId : undefined,
   })
 
   // Modals state
+  const [returnDealerId, setReturnDealerId] = useState('')
   const [returnDealerName, setReturnDealerName] = useState('')
   const [isReturnOpen, setIsReturnOpen] = useState(false)
   const [selectedDealerForDetails, setSelectedDealerForDetails] = useState<DealerDetailsData | null>(null)
@@ -57,28 +68,29 @@ export default function DealerLowKeyReportPage() {
     })
   }
 
-  const handleAllocateKeysSubmit = (dealer: LowKeyPartnerItem) => {
+  const handleAllocateKeysSubmit = async (dealer: LowKeyPartnerItem) => {
     const val = parseInt(keyInputValues[dealer.id] || '', 10)
     if (isNaN(val) || val <= 0) {
       toast.error('Please enter the number of keys to allocate')
       return
     }
 
-    toast.success(`Allocated ${val} keys to ${dealer.dealerShop || dealer.name}!`)
-    setKeyInputValues({
-      ...keyInputValues,
-      [dealer.id]: '',
-    })
-    refetch()
-  }
+    try {
+      await transferKeys({
+        toUserId: dealer.id || (dealer as any)._id,
+        quantity: val,
+        note: `Allocated directly from Dealer Low Key Report`,
+      }).unwrap()
 
-  const handleToggleLockAccess = (dealer: LowKeyPartnerItem) => {
-    const current = lockAccessMap[dealer.id] ?? dealer.lockAccess ?? true
-    setLockAccessMap({
-      ...lockAccessMap,
-      [dealer.id]: !current,
-    })
-    toast.info(`Updated lock access permission for ${dealer.dealerShop || dealer.name}`)
+      toast.success(`Successfully allocated ${val} keys to ${dealer.dealerShop || dealer.name}!`)
+      setKeyInputValues({
+        ...keyInputValues,
+        [dealer.id]: '',
+      })
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to allocate keys to dealer.')
+    }
   }
 
   const handleExportCSV = () => {
@@ -163,6 +175,24 @@ export default function DealerLowKeyReportPage() {
               <option value={10}>&le; 10 Keys</option>
               <option value={20}>&le; 20 Keys</option>
               <option value={50}>&le; 50 Keys</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">Distributor:</span>
+            <select
+              value={selectedDistributorId}
+              onChange={(e) => {
+                setSelectedDistributorId(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground cursor-pointer font-medium"
+            >
+              <option value="all">All City Distributors</option>
+              {distributorsList.map((d: any) => (
+                <option key={d._id || d.id} value={d._id || d.id}>
+                  {d.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -275,7 +305,6 @@ export default function DealerLowKeyReportPage() {
               <th className="w-32 min-w-[120px] text-center whitespace-nowrap">Available Keys</th>
               <th className="w-32 min-w-[120px] text-center whitespace-nowrap">Total Keys</th>
               <th className="min-w-[130px] whitespace-nowrap">Last Active</th>
-              <th className="w-28 text-center whitespace-nowrap">Lock Access</th>
               <th className="w-24 text-center whitespace-nowrap">Return</th>
               <th className="w-36 text-center whitespace-nowrap">Quick Allocate</th>
             </tr>
@@ -310,9 +339,6 @@ export default function DealerLowKeyReportPage() {
                     <div className="h-4 w-20 bg-muted rounded"></div>
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <div className="h-5 w-5 bg-muted rounded-full mx-auto"></div>
-                  </td>
-                  <td className="py-3 px-4 text-center">
                     <div className="h-7 w-7 bg-muted rounded-full mx-auto"></div>
                   </td>
                   <td className="py-3 px-4">
@@ -322,7 +348,7 @@ export default function DealerLowKeyReportPage() {
               ))
             ) : dealersList.length === 0 ? (
               <tr>
-                <td colSpan={11} className="py-12 text-center text-muted-foreground">
+                <td colSpan={10} className="py-12 text-center text-muted-foreground">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <ShieldAlert className="h-8 w-8 text-emerald-500/60" />
                     <p className="text-sm font-semibold text-foreground">
@@ -337,7 +363,6 @@ export default function DealerLowKeyReportPage() {
             ) : (
               dealersList.map((d, index) => {
                 const rowNum = (currentPage - 1) * pageSize + index + 1
-                const hasLockAccess = lockAccessMap[d.id] ?? d.lockAccess ?? true
                 return (
                   <tr key={d.id} className="hover:bg-muted/40 transition-colors">
                     <td className="text-muted-foreground font-mono text-xs">{rowNum}</td>
@@ -377,21 +402,8 @@ export default function DealerLowKeyReportPage() {
                     <td className="text-center">
                       <button
                         type="button"
-                        onClick={() => handleToggleLockAccess(d)}
-                        className="inline-flex items-center justify-center p-1 rounded-full hover:bg-muted transition-colors"
-                        title={hasLockAccess ? 'Lock Access Enabled (Click to toggle)' : 'Lock Access Disabled (Click to toggle)'}
-                      >
-                        {hasLockAccess ? (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-rose-500" />
-                        )}
-                      </button>
-                    </td>
-                    <td className="text-center">
-                      <button
-                        type="button"
                         onClick={() => {
+                          setReturnDealerId(d.id || (d as any)._id)
                           setReturnDealerName(d.dealerShop || d.name)
                           setIsReturnOpen(true)
                         }}
@@ -478,6 +490,7 @@ export default function DealerLowKeyReportPage() {
         isOpen={isReturnOpen}
         onClose={() => setIsReturnOpen(false)}
         distributorName={returnDealerName}
+        partnerId={returnDealerId}
         onSuccess={() => refetch()}
       />
 

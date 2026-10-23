@@ -178,39 +178,46 @@ export default function AnalyticsPage() {
 
   // Dynamic Multi-Level Scoped Metrics based on active Role
   const scopedData = useMemo(() => {
+    const stockistsCount = liveKpis?.stockists ?? 0
+    const distributorsCount = liveKpis?.distributors ?? 0
+    const dealersCount = liveKpis?.dealers ?? 0
+    const usersCount = liveKpis?.users ?? 0
+    const totalKeys = liveKpis?.totalKeys ?? 0
+    const transferredKeys = liveKpis?.transferredKeys ?? 0
+
     switch (role) {
       case 'super_admin':
         return {
           roleTitle: 'Super Admin',
           scopeBadge: 'Global Master Access (All Tiers Visible)',
-          stockistsCount: liveKpis?.stockists || 3,
-          distributorsCount: liveKpis?.distributors || 2,
-          dealersCount: liveKpis?.dealers || 5,
-          usersCount: liveKpis?.users || 46,
-          totalKeys: liveKpis?.totalKeys || 8500,
-          transferredKeys: liveKpis?.transferredKeys || 1500,
-          // Graph Daily Totals
-          stockistKeysDayTotal: 1000,
-          distributorKeysDayTotal: 350,
-          dealerKeysDayTotal: 180,
-          usersDayTotal: 46,
-          keysDayTotal: 500,
+          stockistsCount,
+          distributorsCount,
+          dealersCount,
+          usersCount,
+          totalKeys,
+          transferredKeys,
+          // Graph Daily Totals based on live DB metrics
+          stockistKeysDayTotal: transferredKeys || totalKeys || 0,
+          distributorKeysDayTotal: Math.round((transferredKeys || totalKeys || 0) * 0.6),
+          dealerKeysDayTotal: Math.round((transferredKeys || totalKeys || 0) * 0.3),
+          usersDayTotal: usersCount,
+          keysDayTotal: liveKpis?.availableKeys ?? totalKeys ?? 0,
         }
       case 'stockist':
         return {
           roleTitle: `Stockist (${user?.name || 'Regional Hub'})`,
           scopeBadge: 'Regional Territory Scoped (Assigned Distributors & Dealers)',
           stockistsCount: 1,
-          distributorsCount: liveKpis?.distributors || 2,
-          dealersCount: 4,
-          usersCount: 28,
-          totalKeys: 1000,
-          transferredKeys: 450,
-          stockistKeysDayTotal: 450,
-          distributorKeysDayTotal: 220,
-          dealerKeysDayTotal: 110,
-          usersDayTotal: 28,
-          keysDayTotal: 250,
+          distributorsCount,
+          dealersCount,
+          usersCount,
+          totalKeys,
+          transferredKeys,
+          stockistKeysDayTotal: transferredKeys || totalKeys || 0,
+          distributorKeysDayTotal: Math.round((transferredKeys || totalKeys || 0) * 0.7),
+          dealerKeysDayTotal: Math.round((transferredKeys || totalKeys || 0) * 0.4),
+          usersDayTotal: usersCount,
+          keysDayTotal: liveKpis?.availableKeys ?? totalKeys ?? 0,
         }
       case 'distributor':
         return {
@@ -218,15 +225,15 @@ export default function AnalyticsPage() {
           scopeBadge: 'City Hub Scoped (Assigned Dealers & Customers Only)',
           stockistsCount: 0,
           distributorsCount: 1,
-          dealersCount: 2,
-          usersCount: 12,
-          totalKeys: 500,
-          transferredKeys: 180,
+          dealersCount,
+          usersCount,
+          totalKeys,
+          transferredKeys,
           stockistKeysDayTotal: 0,
-          distributorKeysDayTotal: 180,
-          dealerKeysDayTotal: 75,
-          usersDayTotal: 12,
-          keysDayTotal: 120,
+          distributorKeysDayTotal: transferredKeys || totalKeys || 0,
+          dealerKeysDayTotal: Math.round((transferredKeys || totalKeys || 0) * 0.5),
+          usersDayTotal: usersCount,
+          keysDayTotal: liveKpis?.availableKeys ?? totalKeys ?? 0,
         }
       case 'dealer':
         return {
@@ -235,30 +242,30 @@ export default function AnalyticsPage() {
           stockistsCount: 0,
           distributorsCount: 0,
           dealersCount: 1,
-          usersCount: 6,
-          totalKeys: 50,
-          transferredKeys: 0,
+          usersCount,
+          totalKeys,
+          transferredKeys,
           stockistKeysDayTotal: 0,
           distributorKeysDayTotal: 0,
-          dealerKeysDayTotal: 35,
-          usersDayTotal: 6,
-          keysDayTotal: 30,
+          dealerKeysDayTotal: totalKeys || 0,
+          usersDayTotal: usersCount,
+          keysDayTotal: liveKpis?.availableKeys ?? totalKeys ?? 0,
         }
       default:
         return {
           roleTitle: 'V-Credit Operator',
           scopeBadge: 'Standard Operator View',
-          stockistsCount: 1,
-          distributorsCount: 1,
-          dealersCount: 1,
-          usersCount: 10,
-          totalKeys: 100,
-          transferredKeys: 20,
+          stockistsCount,
+          distributorsCount,
+          dealersCount,
+          usersCount,
+          totalKeys,
+          transferredKeys,
           stockistKeysDayTotal: 0,
-          distributorKeysDayTotal: 50,
-          dealerKeysDayTotal: 25,
-          usersDayTotal: 10,
-          keysDayTotal: 50,
+          distributorKeysDayTotal: 0,
+          dealerKeysDayTotal: 0,
+          usersDayTotal: usersCount,
+          keysDayTotal: liveKpis?.availableKeys ?? totalKeys ?? 0,
         }
     }
   }, [role, user?.name, liveKpis])

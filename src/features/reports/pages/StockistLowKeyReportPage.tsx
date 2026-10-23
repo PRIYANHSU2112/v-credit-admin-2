@@ -38,6 +38,7 @@ export default function StockistLowKeyReportPage() {
   // Modals state
   const [keyStatusData, setKeyStatusData] = useState<KeyStatusData | null>(null)
   const [isKeyStatusOpen, setIsKeyStatusOpen] = useState(false)
+  const [returnStockistId, setReturnStockistId] = useState<string>('')
   const [returnStockist, setReturnStockist] = useState<string>('')
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
 
@@ -64,6 +65,7 @@ export default function StockistLowKeyReportPage() {
   }
 
   const handleOpenReturn = (s: LowKeyPartnerItem) => {
+    setReturnStockistId(s.id || (s as any)._id)
     setReturnStockist(s.agency || s.name)
     setIsReturnModalOpen(true)
   }
@@ -441,6 +443,8 @@ export default function StockistLowKeyReportPage() {
           isOpen={isReturnModalOpen}
           onClose={() => setIsReturnModalOpen(false)}
           distributorName={returnStockist}
+          partnerId={returnStockistId}
+          onSuccess={() => refetch()}
         />
       )}
     </div>

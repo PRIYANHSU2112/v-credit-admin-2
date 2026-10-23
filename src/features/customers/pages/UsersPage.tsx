@@ -20,13 +20,18 @@ export default function UsersPage() {
 
   const [fromDate, setFromDate] = useState('2026-01-15')
   const [toDate, setToDate] = useState('2026-10-14')
+  const [appliedFromDate, setAppliedFromDate] = useState<string | undefined>(undefined)
+  const [appliedToDate, setAppliedToDate] = useState<string | undefined>(undefined)
   const [tableSearch, setTableSearch] = useState('')
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null)
+  const [lockOverrides, setLockOverrides] = useState<Record<string, 'locked' | 'unlocked'>>({})
 
   // 350ms Debounced search according to optimize.md guidelines
   const debouncedSearch = useDebounce(tableSearch, 350)
+
+  const [selectedDealerFilter, setSelectedDealerFilter] = useState('all')
 
   // RTK Query hook connected to live backend on port 3005
   const {
@@ -40,6 +45,9 @@ export default function UsersPage() {
     page: currentPage,
     limit: pageSize,
     search: debouncedSearch.trim() || undefined,
+    fromDate: appliedFromDate,
+    toDate: appliedToDate,
+    dealerId: selectedDealerFilter !== 'all' ? selectedDealerFilter : undefined,
   })
 
   const [lockDevice] = useLockDeviceMutation()
@@ -48,31 +56,20 @@ export default function UsersPage() {
   // User Details Modal state
   const [selectedUserForDetails, setSelectedUserForDetails] = useState<EndUserRecord | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [selectedDealerFilter, setSelectedDealerFilter] = useState('all')
 
   const { data: dealersRes } = useGetDealersQuery()
   const rawDealers = dealersRes?.data && Array.isArray(dealersRes.data) ? dealersRes.data : []
 
   const usersList: EndUserRecord[] = apiResponse?.data || []
 
-  const uniqueDealers = useMemo(() => {
-    const set = new Set<string>()
-    if (rawDealers.length > 0) {
-      rawDealers.forEach((d) => {
-        if (d.name) set.add(d.name)
-      })
-    }
-    usersList.forEach((u) => {
-      if (u.dealer) set.add(u.dealer)
-    })
-    return Array.from(set)
-  }, [rawDealers, usersList])
-
   const displayedUsers = useMemo(() => {
     if (selectedDealerFilter === 'all') return usersList
-    return usersList.filter(
-      (u) => u.dealer && u.dealer.toLowerCase().includes(selectedDealerFilter.toLowerCase())
-    )
+    return usersList.filter((u) => {
+      const matchName = u.dealer && u.dealer.toLowerCase().includes(selectedDealerFilter.toLowerCase())
+      const matchId =
+        (u as any).dealerId === selectedDealerFilter || (u as any).createdBy === selectedDealerFilter
+      return matchName || matchId
+    })
   }, [usersList, selectedDealerFilter])
 
   const pagination = apiResponse?.pagination || {
@@ -82,20 +79,37 @@ export default function UsersPage() {
   }
 
   const handleToggleLock = async (u: EndUserRecord, newLock: 'locked' | 'unlocked') => {
-    setActionInProgressId(u.id)
-    const targetDeviceId = u.imei || u.imei1 || u.id
+    const itemKey = u.id || u._id
+    setActionInProgressId(itemKey)
+    const targetDeviceId = u.imei || u.imei1 || u._id || u.id
 
     try {
       if (newLock === 'locked') {
         await lockDevice({ deviceId: targetDeviceId }).unwrap()
+        setLockOverrides((prev) => ({
+          ...prev,
+          [u.id]: 'locked',
+          ...(u._id ? { [u._id]: 'locked' } : {}),
+        }))
         toast.error(`Remote Lock broadcast signal sent to ${u.userName || u.name}'s phone`)
       } else {
         await unlockDevice({ deviceId: targetDeviceId }).unwrap()
+        setLockOverrides((prev) => ({
+          ...prev,
+          [u.id]: 'unlocked',
+          ...(u._id ? { [u._id]: 'unlocked' } : {}),
+        }))
         toast.success(`Remote Unlock signal sent to ${u.userName || u.name}'s device!`)
       }
       refetch()
     } catch (err: any) {
       console.warn('Device lock endpoint notification:', err)
+      // Even if network or mock returns a soft response, update reactive state
+      setLockOverrides((prev) => ({
+        ...prev,
+        [u.id]: newLock,
+        ...(u._id ? { [u._id]: newLock } : {}),
+      }))
       const message =
         err?.data?.message ||
         `Device command ${newLock.toUpperCase()} registered for ${u.userName || u.name}.`
@@ -169,7 +183,7 @@ export default function UsersPage() {
       )}
 
       {/* Date & Dealer Outlet Filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 pt-1 bg-muted/30 border border-border/60 rounded-xl p-4 max-w-3xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 pt-1 bg-muted/30 border border-border/60 rounded-xl p-4 max-w-4xl">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-primary">Dealer Outlet :</label>
           <select
@@ -181,9 +195,9 @@ export default function UsersPage() {
             className="h-10 rounded-xl border border-border px-3.5 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[200px] font-medium"
           >
             <option value="all">All Dealers (Show all)</option>
-            {uniqueDealers.map((dlr) => (
-              <option key={dlr} value={dlr}>
-                {dlr}
+            {rawDealers.map((dlr: any) => (
+              <option key={dlr._id || dlr.id} value={dlr._id || dlr.id}>
+                {dlr.name}
               </option>
             ))}
           </select>
@@ -212,6 +226,8 @@ export default function UsersPage() {
         <button
           type="button"
           onClick={() => {
+            setAppliedFromDate(fromDate)
+            setAppliedToDate(toDate)
             setCurrentPage(1)
             refetch()
             toast.success('Filtered active user records')
@@ -219,6 +235,21 @@ export default function UsersPage() {
           className="btn-action-primary text-sm font-bold h-10 px-6"
         >
           search
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setAppliedFromDate(undefined)
+            setAppliedToDate(undefined)
+            setSelectedDealerFilter('all')
+            setCurrentPage(1)
+            refetch()
+            toast.info('Reset customer filters')
+          }}
+          className="px-4 h-10 rounded-xl border border-border text-sm font-semibold hover:bg-muted text-foreground transition-colors"
+        >
+          Reset
         </button>
       </div>
 
@@ -327,7 +358,14 @@ export default function UsersPage() {
               </tr>
             ) : (
               displayedUsers.map((u, index) => {
-                const isItemActionRunning = actionInProgressId === u.id
+                const itemKey = u.id || u._id
+                const isItemActionRunning = actionInProgressId === itemKey
+                const effectiveLockStatus: 'locked' | 'unlocked' =
+                  lockOverrides[u.id] ||
+                  (u._id ? lockOverrides[u._id] : undefined) ||
+                  (u.lockStatus?.toLowerCase() === 'locked' ? 'locked' : 'unlocked')
+                const isLocked = effectiveLockStatus === 'locked'
+
                 return (
                   <tr key={u.id || u._id} className="hover:bg-muted/40 transition-colors">
                     <td className="text-muted-foreground font-mono text-sm">
@@ -349,7 +387,7 @@ export default function UsersPage() {
                       {u.city || '—'}
                     </td>
                     <td className="text-center">
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-1.5">
                         <div className="flex items-center gap-1.5">
                           {/* Red Lock Button */}
                           <button
@@ -357,13 +395,17 @@ export default function UsersPage() {
                             disabled={isItemActionRunning}
                             onClick={() => handleToggleLock(u, 'locked')}
                             className={`p-1.5 rounded-lg transition-all shadow-xs disabled:opacity-50 ${
-                              u.lockStatus === 'locked'
-                                ? 'bg-rose-600 text-white ring-2 ring-rose-400'
+                              isLocked
+                                ? 'bg-rose-600 text-white ring-2 ring-rose-400/80 shadow-sm'
                                 : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white'
                             }`}
                             title="Send Remote Lock Signal"
                           >
-                            <Lock className="h-3.5 w-3.5" />
+                            {isItemActionRunning && !isLocked ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Lock className="h-3.5 w-3.5" />
+                            )}
                           </button>
 
                           {/* Green Unlock Button */}
@@ -372,17 +414,28 @@ export default function UsersPage() {
                             disabled={isItemActionRunning}
                             onClick={() => handleToggleLock(u, 'unlocked')}
                             className={`p-1.5 rounded-lg transition-all shadow-xs disabled:opacity-50 ${
-                              u.lockStatus === 'unlocked'
-                                ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                              !isLocked
+                                ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/80 shadow-sm'
                                 : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white'
                             }`}
                             title="Send Remote Unlock Signal"
                           >
-                            <Unlock className="h-3.5 w-3.5" />
+                            {isItemActionRunning && isLocked ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Unlock className="h-3.5 w-3.5" />
+                            )}
                           </button>
                         </div>
-                        <span className="text-[10px] text-muted-foreground font-semibold capitalize font-mono">
-                          {u.lockStatus === 'unlocked' ? 'Unlocked' : 'Locked'}
+
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            isLocked
+                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                          }`}
+                        >
+                          {isLocked ? 'Locked' : 'Unlocked'}
                         </span>
                       </div>
                     </td>

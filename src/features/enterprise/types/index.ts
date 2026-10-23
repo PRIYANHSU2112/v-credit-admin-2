@@ -57,12 +57,15 @@ export interface StockistInventoryItem {
 export interface CommissionItem {
   id: string
   entity: string
+  stockistName?: string
   tier: string
   keysSold: number
   rate: number
   earned: number
   paid: number
+  amount?: number
   month: string
+  period?: string
   status: string
 }
 

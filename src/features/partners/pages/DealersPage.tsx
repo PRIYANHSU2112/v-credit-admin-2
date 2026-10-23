@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, LogIn, FileText, Edit, Key } from 'lucide-react'
-import { useAppSelector } from '@/app/store/hooks'
+import { Eye, LogIn, FileText, Edit, Key, Loader2 } from 'lucide-react'
+import { useAppSelector, useAppDispatch } from '@/app/store/hooks'
 import { useGetDealersQuery } from '@/features/partners/api/partnersApi'
-import { MOCK_DEALERS, type DealerRecord } from '@/mocks/mockSeedData'
+import { useImpersonateUserMutation } from '@/features/enterprise/api/enterpriseApi'
+import { setCredentials } from '@/features/auth/slices/authSlice'
+import type { DealerRecord } from '../types'
 import { DealerDetailsModal } from '@/components/modals/DealerDetailsModal'
 import { DealerFollowupModal } from '@/components/modals/DealerFollowupModal'
 import { KeysReturnModal } from '@/components/modals/KeysReturnModal'
@@ -11,35 +13,36 @@ import { toast } from 'sonner'
 
 export default function DealersPage() {
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const role = user?.role || 'super_admin'
 
-  const { data: apiResponse } = useGetDealersQuery()
+  const { data: apiResponse, isLoading } = useGetDealersQuery()
+  const [impersonateUser] = useImpersonateUserMutation()
   const rawList = apiResponse?.data && Array.isArray(apiResponse.data) ? apiResponse.data : []
 
   const dealers: DealerRecord[] = useMemo(() => {
-    if (rawList.length > 0) {
-      return rawList.map((d) => ({
-        id: d.id,
-        dealerShop: d.name,
-        dealerName: d.name,
-        name: d.name,
-        phone: d.phone,
-        email: d.email,
-        distributor: d.distributor || d.parentName || 'Direct',
-        city: d.city || '—',
-        state: d.state || 'Active',
-        lastActivation: d.lastActive || '—',
-        lastBillingDate: d.lastActive || '—',
-        availableKeys: d.available || 0,
-        available: d.available || 0,
-        totalKeys: d.keys || 0,
-        keys: d.keys || 0,
-        lockAccess: true,
-        status: d.status === 'Active' || d.status === 'active' ? 'Active' : 'Inactive',
-      }))
-    }
-    return MOCK_DEALERS
+    return rawList.map((d) => ({
+      id: d.id,
+      _id: d._id,
+      entityCode: d.entityCode,
+      dealerShop: d.name,
+      dealerName: d.name,
+      name: d.name,
+      phone: d.phone || '—',
+      email: d.email,
+      distributor: d.distributor || d.parentName || 'Direct',
+      city: d.city || '—',
+      state: d.state || 'Active',
+      lastActivation: d.lastActive || '—',
+      lastBillingDate: d.lastActive || '—',
+      availableKeys: d.available || 0,
+      available: d.available || 0,
+      totalKeys: d.keys || 0,
+      keys: d.keys || 0,
+      lockAccess: true,
+      status: d.status === 'Active' || d.status === 'active' ? 'Active' : 'Inactive',
+    }))
   }, [rawList])
 
   // Radio button search filter mode: 'distributor' | 'dealer_select' | 'dealer_info' | 'city_state'
@@ -187,6 +190,34 @@ export default function DealersPage() {
 
   const handleEditDealer = (d: DealerRecord) => {
     navigate(`/app/dealers/edit/${d.id}`)
+  }
+
+  const handleImpersonate = async (d: DealerRecord) => {
+    try {
+      const res = await impersonateUser({ targetUserId: d._id || d.id }).unwrap()
+      if (res.token) {
+        dispatch(
+          setCredentials({
+            token: res.token,
+            user: {
+              id: res.user?._id || res.user?.id || d.id,
+              name: res.user?.name || d.dealerShop,
+              email: res.user?.email || d.email || '',
+              phone: res.user?.phone || d.phone || '',
+              role: 'dealer',
+              parentName: d.distributor,
+              parentId: d.superStockiest,
+              status: 'active',
+              createdAt: res.user?.createdAt || new Date().toISOString(),
+              availableKeys: res.user?.keys || d.availableKeys || 0,
+            },
+          })
+        )
+        toast.success(`Logged in as dealer: ${d.dealerShop}`)
+      }
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Impersonation failed')
+    }
   }
 
   return (
@@ -450,7 +481,16 @@ export default function DealersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredDealers.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={role === 'distributor' ? 11 : 12} className="text-center py-12">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                    <span className="text-sm font-medium">Loading dealers from server...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredDealers.length === 0 ? (
               <tr>
                 <td colSpan={role === 'distributor' ? 11 : 12} className="text-center py-8 text-muted-foreground">
                   No data available in table
@@ -473,7 +513,7 @@ export default function DealersPage() {
                   <td>
                     <button
                       type="button"
-                      onClick={() => toast.success(`Impersonating ${d.dealerShop} dealer portal...`)}
+                      onClick={() => handleImpersonate(d)}
                       className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors"
                       title="Login as Dealer"
                     >

@@ -1,128 +1,107 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
 import { FilterBar } from '@/components/common/FilterBar/FilterBar'
 import { StatusBadge } from '@/components/common/StatusBadge/StatusBadge'
-import { Phone, MapPin } from 'lucide-react'
+import { Phone, MapPin, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { maskPhone, formatDate } from '@/lib/utils'
+import { useGetCustomersDirectoryQuery, type CustomerDirectoryItem } from '../api/customersApi'
 
-interface Customer {
+interface CustomerRow {
   id: string
-  _id?: string
   name: string
-  customerName?: string
   phone: string
-  customerMobileNumber?: string
   aadhaarLast4: string
-  aadhaarNumber?: string
-  panNumber?: string
   city: string
-  address?: string
-  dealerName: string
+  address: string
   activeLoans: number
   isVerified: boolean
   status: 'active' | 'suspended'
   registeredAt: string
 }
 
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: 'c_1',
-    _id: '6708ab9e1234567890cus001',
-    name: 'Rohan Sharma',
-    customerName: 'Rohan Sharma',
-    phone: '9876543210',
-    customerMobileNumber: '9876543210',
-    aadhaarLast4: '4821',
-    aadhaarNumber: '123456784821',
-    panNumber: 'ABCDE1234F',
-    city: 'New Delhi',
-    address: 'Flat 402, Green Avenue, Rohini Sector 15',
-    dealerName: 'Metro Telecom',
-    activeLoans: 1,
-    isVerified: true,
-    status: 'active',
-    registeredAt: '2026-01-10T10:00:00Z',
-  },
-  {
-    id: 'c_2',
-    _id: '6708ab9e1234567890cus002',
-    name: 'Sunita Devi',
-    customerName: 'Sunita Devi',
-    phone: '9811234567',
-    customerMobileNumber: '9811234567',
-    aadhaarLast4: '9912',
-    aadhaarNumber: '234567899912',
-    panNumber: 'FGHIJ5678K',
-    city: 'Rohini',
-    address: 'Pocket C, House 142, Rohini',
-    dealerName: 'City Cell Care',
-    activeLoans: 1,
-    isVerified: true,
-    status: 'active',
-    registeredAt: '2026-01-15T12:00:00Z',
-  },
-  {
-    id: 'c_3',
-    _id: '6708ab9e1234567890cus003',
-    name: 'Mukesh Kumar',
-    customerName: 'Mukesh Kumar',
-    phone: '9822334455',
-    customerMobileNumber: '9822334455',
-    aadhaarLast4: '3410',
-    aadhaarNumber: '345678903410',
-    panNumber: 'KLMNO9012P',
-    city: 'Ludhiana',
-    address: 'Cinema Square, Multai',
-    dealerName: 'Metro Telecom',
-    activeLoans: 0,
-    isVerified: true,
-    status: 'active',
-    registeredAt: '2025-09-15T14:00:00Z',
-  },
-]
-
 export default function CustomersPage() {
   const [search, setSearch] = useState('')
+  const { data: apiResponse, isLoading, isFetching } = useGetCustomersDirectoryQuery()
 
-  const columns: ColumnDef<Customer>[] = [
+  const rawList = apiResponse?.data || []
+
+  const customers: CustomerRow[] = useMemo(() => {
+    return rawList.map((c: CustomerDirectoryItem) => {
+      const aadhaarNum = c.kyc?.aadhaar?.number || ''
+      const last4 = aadhaarNum.length >= 4 ? aadhaarNum.slice(-4) : '••••'
+      return {
+        id: c._id,
+        name: c.customerName || '—',
+        phone: c.customerMobileNumber || '—',
+        aadhaarLast4: last4,
+        city: c.address?.split(',')?.[1]?.trim() || c.address?.split(' ')?.[0] || '—',
+        address: c.address || '—',
+        activeLoans: c.activeLoans ?? 1,
+        isVerified: Boolean(c.isVerified),
+        status: 'active',
+        registeredAt: c.createdAt || new Date().toISOString(),
+      }
+    })
+  }, [rawList])
+
+  const filtered = useMemo(() => {
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone.includes(search) ||
+        c.city.toLowerCase().includes(search.toLowerCase()) ||
+        c.address.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [customers, search])
+
+  const columns: ColumnDef<CustomerRow>[] = [
     {
       id: 'name',
-      header: 'Customer',
+      header: 'Borrower',
       sortable: true,
       render: (item) => (
-        <div className="space-y-0.5">
-          <p className="font-bold text-foreground text-sm">{item.name}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
-            <Phone className="h-3.5 w-3.5" /> {maskPhone(item.phone)}
-          </p>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-foreground text-sm">{item.name}</span>
+            {item.isVerified ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                <ShieldCheck className="h-3 w-3" /> Verified KYC
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                <ShieldAlert className="h-3 w-3" /> Pending KYC
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+            <span className="flex items-center gap-1">
+              <Phone className="h-3 w-3" />
+              {maskPhone(item.phone)}
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {item.city}
+            </span>
+          </div>
         </div>
       ),
     },
     {
-      id: 'kyc',
-      header: 'KYC / Aadhaar',
+      id: 'aadhaar',
+      header: 'Aadhaar (Last 4)',
       render: (item) => (
-        <span className="font-mono text-sm text-muted-foreground font-medium">
-          XXXX-XXXX-{item.aadhaarLast4}
+        <span className="font-mono text-xs bg-muted px-2.5 py-1 rounded-md text-foreground border border-border">
+          •••• •••• {item.aadhaarLast4}
         </span>
       ),
     },
     {
-      id: 'city',
-      header: 'Location',
+      id: 'address',
+      header: 'Address',
       render: (item) => (
-        <span className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
-          <MapPin className="h-3.5 w-3.5" /> {item.city}
-        </span>
-      ),
-    },
-    {
-      id: 'dealer',
-      header: 'Sponsoring Dealer',
-      render: (item) => (
-        <span className="text-sm font-semibold text-primary">
-          {item.dealerName}
+        <span className="text-xs text-muted-foreground line-clamp-1 max-w-[220px]" title={item.address}>
+          {item.address}
         </span>
       ),
     },
@@ -131,7 +110,7 @@ export default function CustomersPage() {
       header: 'Active Loans',
       sortable: true,
       render: (item) => (
-        <span className="font-mono text-sm font-bold text-foreground">
+        <span className="font-mono text-sm font-bold text-primary">
           {item.activeLoans}
         </span>
       ),
@@ -145,34 +124,39 @@ export default function CustomersPage() {
       id: 'date',
       header: 'Enrolled On',
       render: (item) => (
-        <span className="text-sm text-muted-foreground font-mono">
+        <span className="text-xs text-muted-foreground font-mono">
           {formatDate(item.registeredAt)}
         </span>
       ),
     },
   ]
 
-  const filtered = MOCK_CUSTOMERS.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
-      c.city.toLowerCase().includes(search.toLowerCase())
-  )
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Borrowers & Customer Profiles"
-        subtitle="KYC records, financed device mappings, and customer verification statuses."
+        subtitle="Live KYC customer records, active loans, and verification status from MongoDB."
       />
 
       <FilterBar
         searchQuery={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by borrower name, phone, city..."
+        searchPlaceholder="Search by borrower name, phone, city, address..."
       />
 
-      <DataTable data={filtered} columns={columns} exportable exportFilename="v-credit-customers.csv" />
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-3 p-16 bg-card border border-border rounded-2xl">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+          <span className="text-sm font-medium text-muted-foreground">Loading borrower profiles...</span>
+        </div>
+      ) : (
+        <DataTable
+          data={filtered}
+          columns={columns}
+          exportable
+          exportFilename="v-credit-customers.csv"
+        />
+      )}
     </div>
   )
 }

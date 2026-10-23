@@ -13,6 +13,9 @@ export interface UserProfile {
   avatar?: string
   parentId?: string | null
   parentName?: string | null
+  entityCode?: string
+  city?: string
+  territory?: string
   status: 'active' | 'suspended' | 'pending'
   walletBalance?: number
   availableKeys?: number

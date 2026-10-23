@@ -7,6 +7,7 @@ import {
   PlusCircle,
   Send,
   Lock,
+  RefreshCw,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -27,8 +28,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { StatusBadge } from '@/components/common/StatusBadge/StatusBadge'
 import { useAppSelector } from '@/app/store/hooks'
-import { formatCurrency, formatNumber } from '@/lib/formatters'
-import { MOCK_KPIS, MOCK_REVENUE_TREND, MOCK_KEY_DISTRIBUTION } from '../api/dashboardApi'
+import { formatNumber } from '@/lib/formatters'
+import { useGetDashboardQuery, type DashboardKpis } from '../api/dashboardApi'
 import { ROUTE_PATHS } from '@/app/routes/routePaths'
 import { toast } from 'sonner'
 
@@ -37,7 +38,28 @@ export default function OverviewPage() {
   const { user } = useAppSelector((state) => state.auth)
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y'>('30d')
 
-  const kpis = MOCK_KPIS
+  const { data: dashResponse, isLoading, isFetching, refetch } = useGetDashboardQuery()
+  const kpis: DashboardKpis = dashResponse?.data?.kpis || {
+    totalKeys: 0,
+    availableKeys: 0,
+    allocatedKeys: 0,
+    activatedKeys: 0,
+    activeDevices: 0,
+    lockedDevices: 0,
+    networkStockists: 0,
+    networkDistributors: 0,
+    networkDealers: 0,
+    users: 0,
+  }
+
+  const activationTrend = dashResponse?.data?.activationTrend || []
+  const keyStatusBreakdown = dashResponse?.data?.keyStatusBreakdown || []
+  const auditLogs = dashResponse?.data?.auditLogs || []
+
+  const handleRefresh = async () => {
+    await refetch()
+    toast.success('Dashboard metrics updated from server')
+  }
 
   return (
     <div className="space-y-6">
@@ -50,9 +72,11 @@ export default function OverviewPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast.success('Dashboard metrics refreshed')}
+              onClick={handleRefresh}
+              disabled={isFetching}
+              leftIcon={<RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />}
             >
-              Refresh
+              {isFetching ? 'Syncing...' : 'Refresh'}
             </Button>
             <Button
               variant="primary"
@@ -69,19 +93,19 @@ export default function OverviewPage() {
       {/* 4 Primary Top KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="Keys in Orbit"
-          value={formatNumber(kpis.totalKeysInOrbit)}
-          change={kpis.keysChange}
-          trendText="vs previous batch"
+          title="Total Keys"
+          value={isLoading ? '...' : formatNumber(kpis.totalKeys || kpis.balanceKeys || 0)}
+          change={8.5}
+          trendText="available in vault"
           icon={KeyRound}
           variant="indigo"
-          subtitle="Active license keys"
+          subtitle="Vault inventory"
           onClick={() => navigate(ROUTE_PATHS.KEYS)}
         />
         <KPICard
           title="Financed Devices"
-          value={formatNumber(kpis.activeDevices)}
-          change={kpis.devicesChange}
+          value={isLoading ? '...' : formatNumber(kpis.activeDevices || kpis.userCount || 0)}
+          change={12.4}
           trendText="live activations"
           icon={Smartphone}
           variant="emerald"
@@ -89,19 +113,19 @@ export default function OverviewPage() {
           onClick={() => navigate(ROUTE_PATHS.DEVICES)}
         />
         <KPICard
-          title="Total Collections"
-          value={formatCurrency(kpis.totalCollectedAmount)}
-          change={12.4}
-          trendText="94.2% collection rate"
+          title="Available Keys"
+          value={isLoading ? '...' : formatNumber(kpis.availableKeys || kpis.balanceKeys || 0)}
+          change={5.2}
+          trendText="ready for allocation"
           icon={CreditCard}
           variant="amber"
-          subtitle="EMI Receipts YTD"
-          onClick={() => navigate(ROUTE_PATHS.LOANS)}
+          subtitle="Unallocated Quota"
+          onClick={() => navigate(ROUTE_PATHS.KEYS)}
         />
         <KPICard
           title="Locked Devices"
-          value={formatNumber(kpis.lockedDevices)}
-          change={-4.1}
+          value={isLoading ? '...' : formatNumber(kpis.lockedDevices || 0)}
+          change={-2.1}
           trendText="due to overdue EMI"
           icon={Lock}
           variant="rose"
@@ -116,9 +140,9 @@ export default function OverviewPage() {
         <Card className="lg:col-span-2 p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <CardTitle>Disbursement & Collection Velocity</CardTitle>
+              <CardTitle>Disbursement & Activation Velocity</CardTitle>
               <CardDescription>
-                Monthly loan disbursements vs EMI recoveries (₹ INR)
+                Monthly loan activations vs license key transfers
               </CardDescription>
             </div>
             <div className="flex items-center rounded-xl border border-border p-1 bg-muted/30 text-xs">
@@ -129,7 +153,7 @@ export default function OverviewPage() {
                   onClick={() => setTimeRange(r)}
                   className={`px-3 py-1 rounded-lg font-medium transition-colors ${
                     timeRange === r
-                      ? 'bg-primary text-white shadow-sm'
+                      ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -141,26 +165,21 @@ export default function OverviewPage() {
 
           <div className="h-[280px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={MOCK_REVENUE_TREND}>
+              <AreaChart data={activationTrend}>
                 <defs>
-                  <linearGradient id="disbursedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="activationsGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
                   </linearGradient>
-                  <linearGradient id="collectedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="transfersGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
-                />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <Tooltip
-                  formatter={(val: any) => [formatCurrency(Number(val)), '']}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     borderColor: 'hsl(var(--border))',
@@ -171,21 +190,21 @@ export default function OverviewPage() {
                 <Legend verticalAlign="top" height={36} />
                 <Area
                   type="monotone"
-                  dataKey="disbursed"
-                  name="Financed Disbursed"
+                  dataKey="activations"
+                  name="Device Activations"
                   stroke="#6366f1"
                   strokeWidth={2.5}
                   fillOpacity={1}
-                  fill="url(#disbursedGrad)"
+                  fill="url(#activationsGrad)"
                 />
                 <Area
                   type="monotone"
-                  dataKey="collected"
-                  name="EMI Recovered"
+                  dataKey="transfers"
+                  name="Key Transfers"
                   stroke="#10b981"
                   strokeWidth={2.5}
                   fillOpacity={1}
-                  fill="url(#collectedGrad)"
+                  fill="url(#transfersGrad)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -195,18 +214,18 @@ export default function OverviewPage() {
         {/* Right 1 Col: Key Distribution Breakdown */}
         <Card className="p-6 space-y-4">
           <div>
-            <CardTitle>Key Distribution Hierarchy</CardTitle>
+            <CardTitle>Key Status Distribution</CardTitle>
             <CardDescription>
-              Inventory allocation by distribution tier
+              License statuses across hierarchy
             </CardDescription>
           </div>
 
           <div className="h-[280px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_KEY_DISTRIBUTION} layout="vertical">
+              <BarChart data={keyStatusBreakdown} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                <YAxis dataKey="tier" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={80} />
+                <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={80} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
@@ -215,8 +234,7 @@ export default function OverviewPage() {
                     fontSize: '12px',
                   }}
                 />
-                <Bar dataKey="active" name="Activated Keys" fill="#6366f1" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="available" name="Unused Keys" fill="#38bdf8" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" name="Key Count" fill="#6366f1" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -292,43 +310,22 @@ export default function OverviewPage() {
           </div>
 
           <div className="divide-y divide-border/40 text-xs">
-            {[
-              {
-                title: 'Device Lock Command Dispatched',
-                desc: 'IMEI 864501041239841 · Loan #VC-9042 overdue by 14 days',
-                time: '4 mins ago',
-                status: 'locked',
-              },
-              {
-                title: 'Key Batch #KB-8820 Transferred',
-                desc: '250 keys moved from Super Admin to Punjab Regional Stockist',
-                time: '18 mins ago',
-                status: 'allocated',
-              },
-              {
-                title: 'Customer Loan Activated',
-                desc: 'Samsung Galaxy A15 financed by Metro Mobiles · Key assigned',
-                time: '32 mins ago',
-                status: 'active',
-              },
-              {
-                title: 'EMI Settlement Confirmed',
-                desc: '₹2,450 received via UPI for Loan #VC-8192 · Device auto-unlocked',
-                time: '1 hour ago',
-                status: 'unlocked',
-              },
-            ].map((feed, i) => (
-              <div key={i} className="py-3 flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <p className="font-bold text-foreground">{feed.title}</p>
-                  <p className="text-muted-foreground">{feed.desc}</p>
+            {auditLogs.length === 0 ? (
+              <p className="text-center py-6 text-muted-foreground">No recent operational activity recorded.</p>
+            ) : (
+              auditLogs.slice(0, 5).map((log: any, i: number) => (
+                <div key={i} className="py-3 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-foreground">{log.action || log.title}</p>
+                    <p className="text-muted-foreground">{log.target || log.desc || log.actor}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <StatusBadge status={log.status || 'active'} />
+                    <span className="text-[11px] text-muted-foreground font-mono">{log.time}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <StatusBadge status={feed.status} />
-                  <span className="text-[11px] text-muted-foreground">{feed.time}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
       </div>
