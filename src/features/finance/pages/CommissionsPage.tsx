@@ -1,15 +1,90 @@
 import { useMemo, useState } from 'react'
-import { Coins, TrendingUp, DollarSign, Wallet, RefreshCw, AlertCircle } from 'lucide-react'
-import { useGetCommissionsQuery } from '@/features/enterprise/api/enterpriseApi'
-import type { CommissionItem } from '@/features/enterprise/types'
+import {
+  Coins,
+  TrendingUp,
+  DollarSign,
+  Wallet,
+  RefreshCw,
+  AlertCircle,
+  Sliders,
+  Building2,
+  Users,
+  Store,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-react'
+import { useAppSelector } from '@/app/store/hooks'
+import {
+  useGetCommissionsQuery,
+  useUpdateCommissionRatesMutation,
+} from '@/features/enterprise/api/enterpriseApi'
+import type { CommissionItem, CommissionRates } from '@/features/enterprise/types'
 import { useDebounce } from '@/hooks/useDebounce'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { toast } from 'sonner'
 
 export default function CommissionsPage() {
+  const { user } = useAppSelector((state) => state.auth)
+  const role = user?.role || 'super_admin'
+  const isSuper = role === 'super_admin'
+  const isStockist = role === 'stockist'
+  const isDistributor = role === 'distributor'
+  const isDealer = role === 'dealer'
+
   const [tableSearch, setTableSearch] = useState('')
   const [tierFilter, setTierFilter] = useState('all')
   const debouncedSearch = useDebounce(tableSearch, 350)
 
   const { data: response, isLoading, isFetching, isError, error, refetch } = useGetCommissionsQuery()
+  const [updateCommissionRates, { isLoading: isUpdatingRates }] = useUpdateCommissionRatesMutation()
+
+  // Dynamic rates from backend with fallback
+  const rates: CommissionRates = response?.data?.rates || {
+    stockist: 12,
+    distributor: 8,
+    dealer: 5,
+  }
+
+  // Rate configuration modal state
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const [stockistRateInput, setStockistRateInput] = useState('')
+  const [distributorRateInput, setDistributorRateInput] = useState('')
+  const [dealerRateInput, setDealerRateInput] = useState('')
+
+  const handleOpenConfig = () => {
+    setStockistRateInput(String(rates.stockist))
+    setDistributorRateInput(String(rates.distributor))
+    setDealerRateInput(String(rates.dealer))
+    setIsConfigModalOpen(true)
+  }
+
+  const handleSaveRates = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const s = Number(stockistRateInput)
+    const d = Number(distributorRateInput)
+    const r = Number(dealerRateInput)
+
+    if (isNaN(s) || s < 0 || isNaN(d) || d < 0 || isNaN(r) || r < 0) {
+      toast.error('Please enter valid positive numbers for commission rates.')
+      return
+    }
+
+    try {
+      await updateCommissionRates({
+        stockist: s,
+        distributor: d,
+        dealer: r,
+      }).unwrap()
+
+      toast.success('Commission rates updated successfully!', {
+        description: `Stockist: ₹${s} · Distributor: ₹${d} · Dealer: ₹${r} per device activation.`,
+      })
+      setIsConfigModalOpen(false)
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to update commission rates')
+    }
+  }
 
   const commissionsList: CommissionItem[] = response?.data?.commissions || []
 
@@ -34,6 +109,23 @@ export default function CommissionsPage() {
     return { earned, paid, pending: Math.max(0, earned - paid), keys }
   }, [commissionsList])
 
+  // Context-aware subtitle based on user role
+  const roleSubtitle = useMemo(() => {
+    if (isSuper) {
+      return `Automated activation commissions computed for Stockists (₹${rates.stockist}), Distributors (₹${rates.distributor}), and Dealers (₹${rates.dealer}).`
+    }
+    if (isStockist) {
+      return `Your Stockist tier earns ₹${rates.stockist} per activated key, plus visibility into downline distributor and dealer ledger statements.`
+    }
+    if (isDistributor) {
+      return `Your Distributor tier earns ₹${rates.distributor} per activated key, plus visibility into assigned retail dealer store activations.`
+    }
+    if (isDealer) {
+      return `Your Dealer tier earns ₹${rates.dealer} per customer device activated on EMI Safe.`
+    }
+    return `Tier commission ledger calculated based on active platform activation rates.`
+  }, [isSuper, isStockist, isDistributor, isDealer, rates])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -46,26 +138,174 @@ export default function CommissionsPage() {
             <span>&rsaquo;</span>
             <span className="text-foreground font-bold">Commissions</span>
           </div>
-          <p className="text-[11px] font-bold tracking-widest text-primary uppercase mt-1">
-            PARTNER INCENTIVES
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[11px] font-bold tracking-widest text-primary uppercase">
+              PARTNER INCENTIVES
+            </p>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 capitalize">
+              Role: {role.replace('_', ' ')}
+            </span>
+          </div>
           <h1 className="text-2xl font-black text-foreground tracking-tight mt-0.5">
             Hierarchy Commission Ledgers
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Automated activation commissions computed for Stockists (₹12), Distributors (₹8), and Dealers (₹5).
+            {roleSubtitle}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={isLoading || isFetching}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors self-start sm:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Super Admin Rate Configuration Button */}
+          {isSuper && (
+            <button
+              type="button"
+              onClick={handleOpenConfig}
+              className="btn-action-primary text-xs font-bold px-3.5 py-2 flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>Configure Rates</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isLoading || isFetching}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors shadow-2xs cursor-pointer"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Dynamic Commission Rates Ribbon */}
+      <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Active Tier Payout Rates
+            </span>
+          </div>
+          {isSuper ? (
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <span>Managed by Super Admin</span>
+              <button
+                type="button"
+                onClick={handleOpenConfig}
+                className="text-primary font-bold hover:underline ml-1 cursor-pointer"
+              >
+                Edit
+              </button>
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">
+              Live automated rates configured by Platform Directorate
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Stockist Rate */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              isStockist
+                ? 'bg-purple-500/10 border-purple-500/40 shadow-xs ring-1 ring-purple-500/30'
+                : 'bg-muted/30 border-border/70 hover:border-border'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">Stockist Tier</p>
+                  <p className="text-[10px] text-muted-foreground">Regional Hub</p>
+                </div>
+              </div>
+              {isStockist && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Your Rate
+                </span>
+              )}
+            </div>
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black font-mono text-purple-700 dark:text-purple-300">
+                ₹{rates.stockist}
+              </span>
+              <span className="text-xs text-muted-foreground font-semibold">/ activated key</span>
+            </div>
+          </div>
+
+          {/* Distributor Rate */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              isDistributor
+                ? 'bg-blue-500/10 border-blue-500/40 shadow-xs ring-1 ring-blue-500/30'
+                : 'bg-muted/30 border-border/70 hover:border-border'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                  <Users className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">Distributor Tier</p>
+                  <p className="text-[10px] text-muted-foreground">City Hub</p>
+                </div>
+              </div>
+              {isDistributor && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Your Rate
+                </span>
+              )}
+            </div>
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black font-mono text-blue-700 dark:text-blue-300">
+                ₹{rates.distributor}
+              </span>
+              <span className="text-xs text-muted-foreground font-semibold">/ activated key</span>
+            </div>
+          </div>
+
+          {/* Dealer Rate */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              isDealer
+                ? 'bg-amber-500/10 border-amber-500/40 shadow-xs ring-1 ring-amber-500/30'
+                : 'bg-muted/30 border-border/70 hover:border-border'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  <Store className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">Dealer Tier</p>
+                  <p className="text-[10px] text-muted-foreground">Retail Shop</p>
+                </div>
+              </div>
+              {isDealer && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Your Rate
+                </span>
+              )}
+            </div>
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black font-mono text-amber-700 dark:text-amber-300">
+                ₹{rates.dealer}
+              </span>
+              <span className="text-xs text-muted-foreground font-semibold">/ activated key</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 4 KPI Cards */}
@@ -137,7 +377,7 @@ export default function CommissionsPage() {
           <button
             type="button"
             onClick={() => refetch()}
-            className="px-3 py-1 bg-destructive text-destructive-foreground font-semibold rounded-lg hover:opacity-90"
+            className="px-3 py-1 bg-destructive text-destructive-foreground font-semibold rounded-lg hover:opacity-90 cursor-pointer"
           >
             Retry
           </button>
@@ -158,19 +398,19 @@ export default function CommissionsPage() {
             <select
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value)}
-              className="h-9 rounded-xl border border-border px-3 text-xs bg-background text-foreground"
+              className="h-9 rounded-xl border border-border px-3 text-xs bg-background text-foreground font-medium cursor-pointer"
             >
               <option value="all">All Tiers</option>
-              <option value="stockist">Stockist (₹12)</option>
-              <option value="distributor">Distributor (₹8)</option>
-              <option value="dealer">Dealer (₹5)</option>
+              <option value="stockist">Stockist (₹{rates.stockist})</option>
+              <option value="distributor">Distributor (₹{rates.distributor})</option>
+              <option value="dealer">Dealer (₹{rates.dealer})</option>
             </select>
 
             <input
               type="text"
               value={tableSearch}
               onChange={(e) => setTableSearch(e.target.value)}
-              placeholder="Search partner..."
+              placeholder="Search partner or ref..."
               className="h-9 w-48 rounded-xl border border-border px-3 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -209,6 +449,9 @@ export default function CommissionsPage() {
                   <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <Coins className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
                     <p className="text-sm font-semibold">No commission records found</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Statements appear once keys are activated on financed phones.
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -245,6 +488,129 @@ export default function CommissionsPage() {
           </table>
         </div>
       </div>
+
+      {/* Super Admin Rate Configuration Modal */}
+      {isSuper && (
+        <Modal
+          isOpen={isConfigModalOpen}
+          onClose={() => !isUpdatingRates && setIsConfigModalOpen(false)}
+          title="Configure Hierarchy Commission Rates"
+          description="Adjust the automated payout amount (in ₹) credited per activated license key for each partner tier."
+          size="md"
+        >
+          <form onSubmit={handleSaveRates} className="space-y-4 pt-2">
+            {/* Stockist Rate */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                  Stockist Commission Rate (₹)
+                </span>
+                <span className="text-[10px] text-muted-foreground">Tier-1 Regional Hub</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-sm text-muted-foreground font-bold">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={stockistRateInput}
+                  onChange={(e) => setStockistRateInput(e.target.value)}
+                  className="w-full h-10 pl-8 pr-3 rounded-xl border border-border bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="e.g. 12"
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Accrued by regional stockists on each handset enrolled in their network.
+              </p>
+            </div>
+
+            {/* Distributor Rate */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-blue-500" />
+                  Distributor Commission Rate (₹)
+                </span>
+                <span className="text-[10px] text-muted-foreground">City Hub</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-sm text-muted-foreground font-bold">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={distributorRateInput}
+                  onChange={(e) => setDistributorRateInput(e.target.value)}
+                  className="w-full h-10 pl-8 pr-3 rounded-xl border border-border bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="e.g. 8"
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Accrued by city distributors on retail dealer activations in their territory.
+              </p>
+            </div>
+
+            {/* Dealer Rate */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Store className="h-3.5 w-3.5 text-amber-500" />
+                  Dealer Commission Rate (₹)
+                </span>
+                <span className="text-[10px] text-muted-foreground">Retail Mobile Store</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-sm text-muted-foreground font-bold">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={dealerRateInput}
+                  onChange={(e) => setDealerRateInput(e.target.value)}
+                  className="w-full h-10 pl-8 pr-3 rounded-xl border border-border bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="e.g. 5"
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Direct retail store incentive credited upon loan enrollment and device lock registration.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-border flex items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsConfigModalOpen(false)}
+                disabled={isUpdatingRates}
+              >
+                Cancel
+              </Button>
+              <button
+                type="submit"
+                disabled={isUpdatingRates}
+                className="btn-action-primary text-xs font-bold px-4 py-2 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isUpdatingRates ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Saving Rates...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Save Commission Rates</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

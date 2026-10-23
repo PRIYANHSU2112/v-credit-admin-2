@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { EmiRecord } from '../types'
 import { toast } from 'sonner'
+import { useIssueMdmCommandMutation } from '@/features/devices/api/devicesApi'
 
 interface SendReminderModalProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export const SendReminderModal: React.FC<SendReminderModalProps> = ({
 }) => {
   if (!isOpen || !loan) return null
 
+  const [issueCommand] = useIssueMdmCommandMutation()
   const [channel, setChannel] = useState<'whatsapp' | 'sms' | 'voice' | 'push'>('whatsapp')
   const [isSending, setIsSending] = useState(false)
 
@@ -42,10 +44,21 @@ export const SendReminderModal: React.FC<SendReminderModalProps> = ({
 
   const templateMessage = `Dear ${loan.customerName}, this is a friendly reminder from ${loan.dealerName} (V-Credit). Your mobile EMI payment of ${formatCurrency(amountDue)} is due on ${dueDate}. Please pay your installment in full to prevent device Knox lock. Pay via UPI or visit the store. Thank you!`
 
-  const handleSend = () => {
+  const handleSend = async () => {
     setIsSending(true)
-    setTimeout(() => {
-      setIsSending(false)
+    const targetDevId = loan.imeiNumber1 || loan.id || loan._id || ''
+    try {
+      if (channel === 'voice' || channel === 'push') {
+        await issueCommand({
+          deviceId: targetDevId,
+          type: 'SHOW_MESSAGE',
+          payload: {
+            message: templateMessage,
+            isVoiceReminderEnabled: channel === 'voice',
+          },
+        }).unwrap()
+      }
+
       const channelLabel =
         channel === 'whatsapp'
           ? 'WhatsApp message'
@@ -55,11 +68,15 @@ export const SendReminderModal: React.FC<SendReminderModalProps> = ({
           ? 'Automated Voice Reminder'
           : 'High-priority Push Notification'
 
-      toast.success(`${channelLabel} sent to ${loan.customerName} (${loan.customerPhone})!`, {
+      toast.success(`${channelLabel} dispatched to ${loan.customerName} (${loan.customerPhone})!`, {
         description: `Installment reminder for ${formatCurrency(amountDue)} dispatched.`,
       })
       onClose()
-    }, 600)
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to dispatch reminder')
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (

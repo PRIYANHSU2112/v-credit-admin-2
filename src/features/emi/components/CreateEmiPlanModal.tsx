@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Smartphone,
   Calculator,
   User,
   X,
   PlusCircle,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useRegisterCustomerMutation } from '@/features/customers/api/customersApi'
+import { useCreateEmiPlanMutation } from '../api/emiApi'
+import { useGetMobileBrandsQuery } from '@/features/common/api/masterDataApi'
 
 interface CreateEmiPlanModalProps {
   isOpen: boolean
@@ -46,6 +50,18 @@ export const CreateEmiPlanModal: React.FC<CreateEmiPlanModalProps> = ({
     d.setDate(d.getDate() + 30)
     return d.toISOString().split('T')[0]
   })
+
+  const [registerCustomer] = useRegisterCustomerMutation()
+  const [createEmiPlan] = useCreateEmiPlanMutation()
+  const { data: serverBrands } = useGetMobileBrandsQuery()
+
+  const availableBrands = useMemo(() => {
+    if (serverBrands && serverBrands.length > 0) {
+      const names = serverBrands.map((b) => b.brandName || b.name || '').filter(Boolean)
+      if (names.length > 0) return names
+    }
+    return POPULAR_BRANDS
+  }, [serverBrands])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -97,6 +113,7 @@ export const CreateEmiPlanModal: React.FC<CreateEmiPlanModalProps> = ({
     try {
       const payload = {
         customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
         customerMobileNumber: customerPhone.trim(),
         address: customerAddress.trim() || 'Retail Customer Address',
         mobileBrand,
@@ -115,52 +132,32 @@ export const CreateEmiPlanModal: React.FC<CreateEmiPlanModalProps> = ({
         paymentOptions: 'upi',
       }
 
-      // First create or find customer
+      // 1. Register or find customer via RTK Query
       let customerId = 'temp_cust_' + Date.now()
-      const token = localStorage.getItem('v_credit_auth_token')?.replace(/"/g, '') || ''
-
       try {
-        const custRes = await fetch('http://localhost:3005/api/customers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            customerName: customerName.trim(),
-            customerMobileNumber: customerPhone.trim(),
-            address: customerAddress.trim() || 'Retail Customer',
-          }),
-        })
-        const custData = await custRes.json()
-        if (custData && custData.data && custData.data._id) {
-          customerId = custData.data._id
+        const custRes = await registerCustomer({
+          customerName: customerName.trim(),
+          customerMobileNumber: customerPhone.trim(),
+          address: customerAddress.trim() || 'Retail Customer Address',
+        }).unwrap()
+        if (custRes?.data?._id || custRes?.data?.id) {
+          customerId = custRes.data._id || custRes.data.id
         }
       } catch (custErr) {
-        console.warn('Customer pre-creation note:', custErr)
+        console.warn('Customer registration note:', custErr)
       }
 
-      // Then create the loan
-      const loanRes = await fetch(`http://localhost:3005/api/customerLoan/${customerId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const loanData = await loanRes.json()
-
-      if (!loanRes.ok) {
-        throw new Error(loanData.message || 'Loan creation failed on server')
-      }
+      // 2. Create EMI plan via RTK Query mutation
+      const loanRes = await createEmiPlan({
+        ...payload,
+        customerId,
+      }).unwrap()
 
       toast.success('New EMI Plan created successfully!', {
         description: `Installment plan active for ${customerName} (${formatCurrency(monthlyEmi)}/mo).`,
       })
 
-      onSuccess(loanData.data || payload)
+      onSuccess(loanRes?.data || payload)
       onClose()
     } catch (err: any) {
       // Local fallback creation
@@ -299,7 +296,7 @@ export const CreateEmiPlanModal: React.FC<CreateEmiPlanModalProps> = ({
                   onChange={(e) => setMobileBrand(e.target.value)}
                   className="w-full text-sm rounded-lg border border-border bg-background px-3 h-10 text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20"
                 >
-                  {POPULAR_BRANDS.map((b) => (
+                  {availableBrands.map((b) => (
                     <option key={b} value={b}>
                       {b}
                     </option>

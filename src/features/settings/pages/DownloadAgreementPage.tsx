@@ -9,6 +9,48 @@ const AGREEMENTS = [
 ]
 
 export default function DownloadAgreementPage() {
+  const handleDownload = (ag: (typeof AGREEMENTS)[0]) => {
+    try {
+      const content = `===============================================================
+V-CREDIT ENTERPRISE PLATFORM COMPLIANCE & LEGAL MANDATE
+Document: ${ag.title}
+Version: ${ag.version}
+Issued Date: ${ag.date}
+===============================================================
+
+1. PURPOSE & SCOPE
+This document constitutes the official legal agreement and compliance mandate between
+V-Credit / EmiSafe Technologies Private Limited and the authorized enterprise partner.
+
+2. DEVICE LOCK & MDM ENFORCEMENT MANDATE
+Under this agreement, the partner and borrower explicitly authorize V-Credit
+to enroll the financed smartphone hardware under Samsung Knox / Android Enterprise Device Owner policies.
+In the event of an overdue EMI installment default past the statutory grace period, automated
+screen locking, camera blocking, and restriction policies shall be enforced until account clearance.
+
+3. PRIVACY & TELEMETRY
+Telemetry data including SIM card identifiers (IMSI) and coarse geographic coordinates
+is processed strictly for collateral preservation and security under applicable IT and banking laws.
+
+Official Seal & Signatory:
+V-Credit Legal Operations & Risk Management Directorate
+Generated: ${new Date().toISOString()}
+`
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${ag.title.replace(/\s+/g, '_')}_${ag.version}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`Downloaded official ${ag.title}`)
+    } catch {
+      toast.error('Failed to download agreement document')
+    }
+  }
+
   return (
     <div className="bg-card p-8 rounded-2xl shadow-xs border border-border max-w-3xl text-card-foreground">
       <div className="pb-4 border-b border-border mb-6">
@@ -36,8 +78,8 @@ export default function DownloadAgreementPage() {
 
             <button
               type="button"
-              onClick={() => toast.success(`Downloading "${ag.title}"...`)}
-              className="flex items-center gap-2 btn-action-primary text-sm font-bold px-4 py-2 rounded-xl shadow-xs"
+              onClick={() => handleDownload(ag)}
+              className="flex items-center gap-2 btn-action-primary text-sm font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
             >
               <Download className="h-4 w-4" />
               Download

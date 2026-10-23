@@ -393,29 +393,29 @@ export function AppSidebar({
             {!isCollapsed && <span>Key Management</span>}
           </NavLink>
 
-          {/* INVENTORY */}
-          <NavLink
-            to={ROUTE_PATHS.INVENTORY}
-            onClick={closeMobile}
-            className={({ isActive }) => pillCls(isActive)}
-            title="Vault Inventory"
-          >
-            <Layers className="h-4.5 w-4.5 shrink-0 text-cyan-500" />
-            {!isCollapsed && <span>Inventory</span>}
-          </NavLink>
-
-          {/* COMMISSIONS (Super Admin) */}
+          {/* INVENTORY (Super Admin Only) */}
           {isSuper && (
             <NavLink
-              to={ROUTE_PATHS.COMMISSIONS}
+              to={ROUTE_PATHS.INVENTORY}
               onClick={closeMobile}
               className={({ isActive }) => pillCls(isActive)}
-              title="Hierarchy Commission Ledgers"
+              title="Vault Inventory"
             >
-              <Coins className="h-4.5 w-4.5 shrink-0 text-yellow-500" />
-              {!isCollapsed && <span>Commissions</span>}
+              <Layers className="h-4.5 w-4.5 shrink-0 text-cyan-500" />
+              {!isCollapsed && <span>Inventory</span>}
             </NavLink>
           )}
+
+          {/* COMMISSIONS (Accessible to Super Admin, Stockist, Distributor, Dealer) */}
+          <NavLink
+            to={ROUTE_PATHS.COMMISSIONS}
+            onClick={closeMobile}
+            className={({ isActive }) => pillCls(isActive)}
+            title="Hierarchy Commission Ledgers"
+          >
+            <Coins className="h-4.5 w-4.5 shrink-0 text-yellow-500" />
+            {!isCollapsed && <span>Commissions</span>}
+          </NavLink>
 
           {/* NOTIFICATIONS */}
           <NavLink

@@ -10,10 +10,42 @@ interface AgreementModalProps {
 
 export function AgreementModal({ isOpen, onClose }: AgreementModalProps) {
   const handleDownload = () => {
-    toast.success('Downloading official Distribution Agreement PDF...')
-    setTimeout(() => {
+    try {
+      const content = `===============================================================
+V-CREDIT ENTERPRISE PLATFORM COMPLIANCE & LEGAL MANDATE
+Document: Distribution & Franchise Partnership Agreement
+Version: v3.2 (Digitally Signed)
+Generated: ${new Date().toISOString()}
+===============================================================
+
+1. LICENSE & KEY ALLOCATION SCOPE
+The Stockist / Partner is granted non-exclusive rights to distribute digital device finance keys 
+strictly within authorized municipal boundaries. Keys already activated on a financed phone are permanently non-reclaimable.
+
+2. MDM DEVICE ENFORCEMENT & CUSTOMER DATA
+Remote MDM lock signals must comply strictly with RBI guidelines and customer EMI repayment schedules. 
+Unwarranted device tampering or unauthorized IMEI tracking is prohibited.
+
+3. COMMISSION PAYOUTS & SETTLEMENT
+Commission disbursements will be credited directly to the registered wallet upon verified borrower repayment.
+
+Official Signatory:
+V-Credit Legal Operations & Risk Management Directorate
+`
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `V-Credit_Partner_Agreement_v3.2.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Downloaded official Distribution Agreement')
       onClose()
-    }, 1000)
+    } catch {
+      toast.error('Failed to download agreement document')
+    }
   }
 
   return (

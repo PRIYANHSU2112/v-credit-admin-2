@@ -18,6 +18,7 @@ export const API_TAGS = {
   COMMISSIONS: 'Commissions',
   NOTIFICATIONS: 'Notifications',
   INVENTORY: 'Inventory',
+  SETTINGS: 'Settings',
 } as const
 
 export type ApiTagType = (typeof API_TAGS)[keyof typeof API_TAGS]

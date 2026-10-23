@@ -76,6 +76,12 @@ export interface CommissionTrendItem {
   dealer: number
 }
 
+export interface CommissionRates {
+  stockist: number
+  distributor: number
+  dealer: number
+}
+
 export interface AuditLogItem {
   time: string
   actor: string

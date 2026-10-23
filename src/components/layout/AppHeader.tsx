@@ -62,6 +62,7 @@ export function AppHeader({
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
+  const isSuper = user?.role === 'super_admin'
   const { isDark, toggleTheme, accent, setAccent } = useTheme()
 
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -357,80 +358,25 @@ export function AppHeader({
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Bulk Generate Button (Super Admin) */}
-          <button
-            type="button"
-            onClick={() => setIsBulkGenerateOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
-            title="Bulk Mint License Keys"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
-            <span className="hidden sm:inline">Bulk Generate</span>
-          </button>
-
-          {/* Super Admin Status Badge */}
-          <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase border border-border bg-muted/60 text-muted-foreground">
-            SUPER ADMIN
-          </span>
-
-          {/* Notification Bell */}
-          <div className="relative">
+          {/* Bulk Generate Button (Super Admin Only) */}
+          {isSuper && (
             <button
               type="button"
-              onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-              className="relative p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-              title="Notifications"
+              onClick={() => setIsBulkGenerateOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+              title="Bulk Mint License Keys"
             >
-              <Bell className="h-4.5 w-4.5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-                </span>
-              )}
+              <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
+              <span className="hidden sm:inline">Bulk Generate</span>
             </button>
+          )}
 
-            {isNotifDropdownOpen && (
-              <div
-                className="absolute right-0 mt-2 w-80 rounded-2xl border border-border bg-popover p-0 shadow-2xl z-50 animate-in fade-in zoom-in-95 overflow-hidden"
-                onMouseLeave={() => setIsNotifDropdownOpen(false)}
-              >
-                <div className="flex items-center justify-between border-b border-border p-3.5 bg-muted/30">
-                  <div>
-                    <span className="text-xs font-bold text-foreground">Alerts & Notifications</span>
-                    <p className="text-[10px] text-muted-foreground">{unreadCount} unread system alerts</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsNotifDropdownOpen(false)
-                      navigate('/app/notifications')
-                    }}
-                    className="text-[11px] font-bold text-primary hover:underline"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="max-h-72 overflow-y-auto divide-y divide-border">
-                  {notificationsData?.data?.slice(0, 5).map((n) => (
-                    <div key={n.id} className="p-3 text-xs hover:bg-muted/40 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-foreground text-xs">{n.title}</span>
-                        <span className="text-[10px] text-muted-foreground">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{n.message}</p>
-                    </div>
-                  ))}
-                  {(!notificationsData?.data || notificationsData.data.length === 0) && (
-                    <div className="p-4 text-center text-xs text-muted-foreground">
-                      No notifications yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Super Admin Status Badge (Super Admin Only) */}
+          {isSuper && (
+            <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase border border-border bg-muted/60 text-muted-foreground">
+              SUPER ADMIN
+            </span>
+          )}
 
           {/* Theme Mode Toggle (Light / Dark) */}
           <button

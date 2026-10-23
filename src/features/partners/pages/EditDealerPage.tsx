@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { useGetDealersQuery, useResetPartnerPasswordMutation } from '@/features/partners/api/partnersApi'
+import {
+  useGetDealersQuery,
+  useUpdatePartnerProfileMutation,
+  useResetPartnerPasswordMutation,
+} from '@/features/partners/api/partnersApi'
 import { ROUTE_PATHS } from '@/app/routes/routePaths'
 import { toast } from 'sonner'
 
@@ -10,6 +14,7 @@ export default function EditDealerPage() {
   const navigate = useNavigate()
 
   const { data: dealersRes, isLoading: isLoadingDealers } = useGetDealersQuery()
+  const [updatePartnerProfile] = useUpdatePartnerProfileMutation()
   const [resetPassword] = useResetPartnerPasswordMutation()
 
   const currentDealer = dealersRes?.data?.find((d) => d.id === id || d._id === id)
@@ -55,8 +60,22 @@ export default function EditDealerPage() {
     setIsSaving(true)
 
     try {
-      if (password && id) {
-        await resetPassword({ userId: id, password }).unwrap()
+      if (id) {
+        await updatePartnerProfile({
+          userId: id,
+          data: {
+            name: dealerName.trim(),
+            agencyName: shop.trim(),
+            phone: cleanedPhone,
+            email: emailId.trim(),
+            address: address.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            district: district.trim(),
+            pincode: pincode.trim(),
+            ...(password ? { password } : {}),
+          },
+        }).unwrap()
       }
       toast.success(`Dealer details for "${shop}" saved successfully!`)
       navigate(ROUTE_PATHS.DEALERS)

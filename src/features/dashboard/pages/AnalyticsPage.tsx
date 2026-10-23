@@ -6,9 +6,10 @@ import {
   Key,
   Building2,
   Store,
+  MapPin,
 } from 'lucide-react'
 import { useAppSelector } from '@/app/store/hooks'
-import { useGetDashboardQuery } from '@/features/enterprise/api/enterpriseApi'
+import { useGetDashboardQuery, useGetAnalyticsQuery } from '@/features/enterprise/api/enterpriseApi'
 import { toast } from 'sonner'
 import type { UserRole } from '@/types/user'
 
@@ -175,6 +176,8 @@ export default function AnalyticsPage() {
 
   const { data: dashboardRes } = useGetDashboardQuery()
   const liveKpis = dashboardRes?.data?.kpis
+  const { data: analyticsRes, isLoading: isAnalyticsLoading } = useGetAnalyticsQuery()
+  const citiesData = useMemo(() => analyticsRes?.data?.cities || [], [analyticsRes])
 
   // Dynamic Multi-Level Scoped Metrics based on active Role
   const scopedData = useMemo(() => {
@@ -507,6 +510,64 @@ export default function AnalyticsPage() {
               unit="keys"
               seed={5}
             />
+          </div>
+        )}
+      </div>
+
+      {/* 6. GEOGRAPHIC & TERRITORY REGIONAL HUBS (Live /enterprise/analytics) */}
+      <div className="border border-border/80 rounded-2xl p-6 bg-card/60 backdrop-blur-xs shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-500/15 text-blue-500">
+              <MapPin className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-foreground">Regional Hubs & City Activation Distribution</h3>
+              <p className="text-xs text-muted-foreground">Aggregated customer devices enrolled per city from live telemetry</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">
+            {citiesData.length} Cities Registered
+          </span>
+        </div>
+
+        {isAnalyticsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse border border-border/50" />
+            ))}
+          </div>
+        ) : citiesData.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground">
+            No geographic activation records found for current role scope.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {citiesData.map((item, idx) => {
+              const maxCityVal = Math.max(...citiesData.map((c) => c.value), 1)
+              const pct = Math.round((item.value / maxCityVal) * 100)
+              return (
+                <div
+                  key={item.city || idx}
+                  className="p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/40 transition-colors flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground truncate max-w-[180px]">
+                      {item.city}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-primary">
+                      {item.value} {item.value === 1 ? 'device' : 'devices'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

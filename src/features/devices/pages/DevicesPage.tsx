@@ -22,6 +22,7 @@ import {
   useLockDeviceMutation,
   useUnlockDeviceMutation,
 } from '@/features/customers/api/customersApi'
+import { useGetDevicesQuery } from '../api/devicesApi'
 import type { FinancedDevice, DeviceCommandType } from '../types'
 import { toast } from 'sonner'
 
@@ -32,13 +33,20 @@ export default function DevicesPage() {
   const canUnlock = hasPermission(user?.role, 'devices:command:unlock')
   const canAlarm = hasPermission(user?.role, 'devices:command:alarm')
 
-  const { data: usersRes, isLoading, isFetching } = useGetEndUsersQuery()
+  const { data: devicesRes, isLoading: isLoadingDevices, isFetching: isFetchingDevices } = useGetDevicesQuery()
+  const { data: usersRes, isLoading: isLoadingUsers, isFetching: isFetchingUsers } = useGetEndUsersQuery()
   const [lockDevice, { isLoading: isLocking }] = useLockDeviceMutation()
   const [unlockDevice, { isLoading: isUnlocking }] = useUnlockDeviceMutation()
+
+  const isLoading = isLoadingDevices && isLoadingUsers
+  const isFetching = isFetchingDevices || isFetchingUsers
 
   const rawUsers = usersRes?.data || []
 
   const devices: FinancedDevice[] = useMemo(() => {
+    if (devicesRes?.data && devicesRes.data.length > 0) {
+      return devicesRes.data
+    }
     return rawUsers.map((u, i) => {
       const parts = (u.device || u.userFeature || 'Samsung Galaxy').split(' ')
       const brand = parts[0] || 'Generic'
@@ -60,7 +68,7 @@ export default function DevicesPage() {
         isKnoxEnabled: true,
       }
     })
-  }, [rawUsers])
+  }, [devicesRes, rawUsers])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [lockFilter, setLockFilter] = useState('all')

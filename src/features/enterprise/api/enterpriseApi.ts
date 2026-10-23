@@ -7,6 +7,7 @@ import type {
   StockistInventoryItem,
   CommissionItem,
   CommissionTrendItem,
+  CommissionRates,
   AuditLogItem,
   NotificationItem,
   SearchResultData,
@@ -59,11 +60,20 @@ export const enterpriseApi = baseApi.injectEndpoints({
 
     // ── Commissions ──
     getCommissions: builder.query<
-      { success: boolean; data: { commissions: CommissionItem[]; commissionTrend: CommissionTrendItem[] } },
+      { success: boolean; data: { commissions: CommissionItem[]; commissionTrend: CommissionTrendItem[]; rates?: CommissionRates } },
       void
     >({
       query: () => '/enterprise/commissions',
       providesTags: [API_TAGS.COMMISSIONS],
+    }),
+
+    updateCommissionRates: builder.mutation<ApiResponse<CommissionRates>, Partial<CommissionRates>>({
+      query: (body) => ({
+        url: '/enterprise/commissions/rates',
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: [API_TAGS.COMMISSIONS, API_TAGS.SETTINGS, API_TAGS.DASHBOARD],
     }),
 
     // ── Analytics ──
@@ -179,6 +189,7 @@ export const {
   useGetTerritoriesQuery,
   useGetInventoryQuery,
   useGetCommissionsQuery,
+  useUpdateCommissionRatesMutation,
   useGetAnalyticsQuery,
   useGetAuditLogsQuery,
   useGetNotificationsQuery,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Building2,
   Store,
@@ -17,6 +17,7 @@ import {
   useCreateDistributorMutation,
   useCreateDealerMutation,
 } from '@/features/partners/api/partnersApi'
+import { useGetStatesQuery, useUploadFileMutation } from '@/features/common/api/masterDataApi'
 import type { CreatePartnerRequest } from '@/features/partners/types'
 
 type PartnerTier = 'stockist' | 'distributor' | 'dealer'
@@ -66,6 +67,17 @@ export default function AddDistributorPage() {
     if (role === 'stockist') return 'distributor'
     return 'distributor'
   }
+
+  const { data: serverStates } = useGetStatesQuery()
+  const [uploadFile] = useUploadFileMutation()
+
+  const stateOptions = useMemo<string[]>(() => {
+    if (serverStates && serverStates.length > 0) {
+      const list = serverStates.map((s: any) => s.stateName || s.name || '').filter(Boolean)
+      if (list.length > 0) return list
+    }
+    return INDIAN_STATES
+  }, [serverStates])
 
   const [selectedTier, setSelectedTier] = useState<PartnerTier>(getInitialTier)
 
@@ -208,13 +220,32 @@ export default function AddDistributorPage() {
     }
 
     try {
+      let uploadedProfileUrl = ''
+      if (files.profileImage) {
+        try {
+          const fd = new FormData()
+          fd.append('file', files.profileImage)
+          const uploadRes = await uploadFile(fd).unwrap()
+          if (uploadRes?.filePath) {
+            uploadedProfileUrl = uploadRes.filePath
+          }
+        } catch (uploadErr) {
+          console.warn('Profile image upload failed, proceeding with registration:', uploadErr)
+        }
+      }
+
+      const finalPayload: CreatePartnerRequest = {
+        ...payload,
+        ...(uploadedProfileUrl ? { profileUrl: uploadedProfileUrl } : {}),
+      }
+
       let res: any
       if (selectedTier === 'stockist') {
-        res = await createStockist(payload).unwrap()
+        res = await createStockist(finalPayload).unwrap()
       } else if (selectedTier === 'distributor') {
-        res = await createDistributor(payload).unwrap()
+        res = await createDistributor(finalPayload).unwrap()
       } else {
-        res = await createDealer(payload).unwrap()
+        res = await createDealer(finalPayload).unwrap()
       }
 
       const tierTitle =
@@ -562,7 +593,7 @@ export default function AddDistributorPage() {
                   required
                 >
                   <option value="">Select State</option>
-                  {INDIAN_STATES.map((st) => (
+                  {stateOptions.map((st: string) => (
                     <option key={st} value={st}>
                       {st}
                     </option>

@@ -8,6 +8,7 @@
 import { baseApi } from '@/app/api/baseApi'
 import { API_TAGS } from '@/app/api/apiTags'
 import type { EndUserRecord, GetEndUsersParams } from '../types'
+import type { ApiResponse } from '@/types/common'
 
 export interface EndUsersResponse {
   success: boolean
@@ -163,6 +164,23 @@ export const customersApi = baseApi.injectEndpoints({
       invalidatesTags: [API_TAGS.CUSTOMERS],
     }),
 
+    // ── Direct Customer Registration ───────────────────────────────────────
+    registerCustomer: builder.mutation<
+      ApiResponse<any>,
+      { customerName: string; customerMobileNumber: string; address?: string }
+    >({
+      query: (body) => ({
+        url: '/customers/register',
+        method: 'POST',
+        body,
+      }),
+      transformErrorResponse: (response: any) => ({
+        status: response.status,
+        message: response.data?.message || 'Customer registration failed',
+      }),
+      invalidatesTags: [API_TAGS.CUSTOMERS],
+    }),
+
     // ── Upload Aadhaar KYC ─────────────────────────────────────────────────
     uploadAadhaarKyc: builder.mutation<
       { success: boolean },
@@ -238,6 +256,7 @@ export const {
   useGetCustomerByIdQuery,
   useSendCustomerOtpMutation,
   useVerifyAndCreateCustomerMutation,
+  useRegisterCustomerMutation,
   useUploadAadhaarKycMutation,
   useUploadPanKycMutation,
   useLockDeviceMutation,

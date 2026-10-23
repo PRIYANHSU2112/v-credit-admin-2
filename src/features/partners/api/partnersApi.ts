@@ -162,6 +162,23 @@ export const partnersApi = baseApi.injectEndpoints({
       invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
     }),
 
+    // ── Update Partner Profile ─────────────────────────────────────────────
+    updatePartnerProfile: builder.mutation<
+      ApiResponse<any>,
+      { userId: string; data: Partial<CreatePartnerPayload> }
+    >({
+      query: ({ userId, data }) => ({
+        url: `/user/${userId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      transformErrorResponse: (response: any) => ({
+        status: response.status,
+        message: response.data?.message || 'Profile update failed',
+      }),
+      invalidatesTags: [API_TAGS.PARTNERS, API_TAGS.DASHBOARD],
+    }),
+
     // ── Reset Partner Password ─────────────────────────────────────────────
     resetPartnerPassword: builder.mutation<
       ApiResponse<{ id: string }>,
@@ -189,5 +206,6 @@ export const {
   useCreateDistributorMutation,
   useGetDealersQuery,
   useCreateDealerMutation,
+  useUpdatePartnerProfileMutation,
   useResetPartnerPasswordMutation,
 } = partnersApi

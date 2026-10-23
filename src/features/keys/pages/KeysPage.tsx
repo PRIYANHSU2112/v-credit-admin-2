@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 
 export default function KeysPage() {
   const { user } = useAppSelector((state) => state.auth)
-  const canGenerate = hasPermission(user?.role, 'keys:generate') || user?.role === 'super_admin'
+  const canGenerate = user?.role === 'super_admin'
   const canTransfer = hasPermission(user?.role, 'keys:transfer') || user?.role === 'super_admin'
   const canReclaim = hasPermission(user?.role, 'keys:reclaim') || user?.role === 'super_admin'
 

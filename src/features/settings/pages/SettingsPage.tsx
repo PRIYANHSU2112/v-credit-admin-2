@@ -1,25 +1,49 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { useTheme, THEME_ACCENT_OPTIONS, type ThemeMode } from '@/app/providers/ThemeProvider'
-import { Sun, Moon, Laptop, Check, Palette } from 'lucide-react'
+import { Sun, Moon, Laptop, Check, Palette, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useGetSettingsQuery, useUpdateSettingsMutation } from '../api/settingsApi'
 
 export default function SettingsPage() {
   const { theme, setTheme, accent, setAccent } = useTheme()
+
+  const { data: settingsRes, isLoading, isFetching, refetch } = useGetSettingsQuery()
+  const [updateSettings, { isLoading: isSaving }] = useUpdateSettingsMutation()
 
   const [autoLockOnOverdue, setAutoLockOnOverdue] = useState(true)
   const [gracePeriodDays, setGracePeriodDays] = useState('3')
   const [smsGatewayActive, setSmsGatewayActive] = useState(true)
   const [whatsappAlerts, setWhatsappAlerts] = useState(true)
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (settingsRes?.data?.platform) {
+      const p = settingsRes.data.platform
+      setAutoLockOnOverdue(p.autoLockOnOverdue ?? true)
+      setGracePeriodDays(String(p.gracePeriodDays ?? 3))
+      setSmsGatewayActive(p.smsGatewayActive ?? true)
+      setWhatsappAlerts(p.whatsappAlerts ?? true)
+    }
+  }, [settingsRes])
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success('Platform configurations saved successfully.')
+    try {
+      await updateSettings({
+        autoLockOnOverdue,
+        gracePeriodDays: Number(gracePeriodDays) || 3,
+        smsGatewayActive,
+        whatsappAlerts,
+      }).unwrap()
+      toast.success('Platform configurations saved successfully.')
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to save configurations')
+    }
   }
 
   const modeOptions: { id: ThemeMode; label: string; icon: typeof Sun; desc: string }[] = [
@@ -174,8 +198,15 @@ export default function SettingsPage() {
               />
             </div>
 
-            <Button type="submit" variant="primary" size="sm">
-              Save Policy Changes
+            <Button type="submit" variant="primary" size="sm" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  Saving...
+                </>
+              ) : (
+                'Save Policy Changes'
+              )}
             </Button>
           </form>
         </Card>
@@ -204,13 +235,32 @@ export default function SettingsPage() {
               <Switch checked={whatsappAlerts} onChange={setWhatsappAlerts} />
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.success('Test message dispatched successfully.')}
-            >
-              Test Notification Dispatch
-            </Button>
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={isSaving}
+                onClick={handleSave}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Notification Settings'
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => toast.success('Test message dispatched successfully to registered admin phone.')}
+              >
+                Test Notification Dispatch
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

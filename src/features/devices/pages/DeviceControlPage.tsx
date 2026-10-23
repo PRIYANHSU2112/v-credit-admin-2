@@ -22,6 +22,13 @@ import {
   useLockDeviceMutation,
   useUnlockDeviceMutation,
 } from '@/features/customers/api/customersApi'
+import {
+  useRequestDeviceLocationMutation,
+  useRequestDeviceSimInfoMutation,
+  useUpdateDevicePolicyMutation,
+  useIssueMdmCommandMutation,
+  useSetBlacklistDeviceMutation,
+} from '@/features/devices/api/devicesApi'
 import { AgreementModal } from '@/components/common/AgreementModal'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
@@ -33,6 +40,11 @@ export default function DeviceControlPage() {
   const { data: usersRes } = useGetEndUsersQuery()
   const [lockDeviceMutation] = useLockDeviceMutation()
   const [unlockDeviceMutation] = useUnlockDeviceMutation()
+  const [requestLocationApi] = useRequestDeviceLocationMutation()
+  const [requestSimInfoApi] = useRequestDeviceSimInfoMutation()
+  const [updatePolicyApi] = useUpdateDevicePolicyMutation()
+  const [issueCommandApi] = useIssueMdmCommandMutation()
+  const [setBlacklistApi] = useSetBlacklistDeviceMutation()
 
   const foundUser = usersRes?.data?.find((u) => u.id === id || u._id === id || u.imei === id)
 
@@ -116,28 +128,75 @@ export default function DeviceControlPage() {
     }
   }
 
-  const handleRemoveDevice = () => {
-    toast.warning(`Device removal command sent for ${userRecord.customerName || userRecord.userName}. Device un-enrolled.`)
+  const handleRemoveDevice = async () => {
+    try {
+      const devId = userRecord.imei || userRecord.imei1 || userRecord.id
+      await setBlacklistApi({ deviceId: devId, blacklisted: true, reason: 'Device de-enrolled by Administrator' }).unwrap()
+      toast.warning(`Device removal command sent for ${userRecord.customerName || userRecord.userName}. Device un-enrolled.`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to de-enroll device')
+    }
   }
 
-  // Sound Audio Reminder Simulation
-  const handlePlayAudioReminder = () => {
-    toast.info('Broadcasting EMI repayment audio voice alert to phone speaker...', {
-      description: 'Dispatched via MDM command SHOW_MESSAGE with isVoiceReminderEnabled: true.',
-      icon: <Volume2 className="h-5 w-5 text-cyan-600 animate-bounce" />,
-    })
+  // Sound Audio Reminder
+  const handlePlayAudioReminder = async () => {
+    try {
+      const devId = userRecord.imei || userRecord.imei1 || userRecord.id
+      await issueCommandApi({
+        deviceId: devId,
+        type: 'SHOW_MESSAGE',
+        payload: {
+          isVoiceReminderEnabled: true,
+          message: 'Dear Customer, your EMI installment is pending. Please pay your installment in full.',
+        },
+      }).unwrap()
+      toast.info('Broadcasting EMI repayment audio voice alert to phone speaker...', {
+        description: 'Dispatched via MDM command SHOW_MESSAGE with isVoiceReminderEnabled: true.',
+        icon: <Volume2 className="h-5 w-5 text-cyan-600 animate-bounce" />,
+      })
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to dispatch audio alert')
+    }
   }
 
-  const handleSendScreenReminder = () => {
-    toast.success(`Sent on-screen overdue notification to ${userRecord.customerMobileNumber || userRecord.userPhone}`)
+  const handleSendScreenReminder = async () => {
+    try {
+      const devId = userRecord.imei || userRecord.imei1 || userRecord.id
+      await issueCommandApi({
+        deviceId: devId,
+        type: 'SET_MESSAGE',
+        payload: {
+          message: `Dear ${userRecord.customerName || userRecord.userName}, your EMI repayment is due. Please settle your installment today.`,
+        },
+      }).unwrap()
+      toast.success(`Sent on-screen overdue notification to ${userRecord.customerMobileNumber || userRecord.userPhone}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to send on-screen reminder')
+    }
   }
 
-  const handleGetLocation = () => {
-    toast.success('Device GPS Ping Received via POST /api/customerLoan/location/request: Lat 21.9023° N, Long 77.9014° E (Accuracy: 4 meters)')
+  const handleGetLocation = async () => {
+    try {
+      const targetLoanId = userRecord.loanId || userRecord.id || userRecord._id
+      await requestLocationApi({ loanId: targetLoanId }).unwrap()
+      toast.success('Device GPS Ping requested via POST /api/customerLoan/location/request!', {
+        description: 'Device will transmit fresh coordinates on next heartbeat.',
+      })
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to request device location')
+    }
   }
 
-  const handleGetPhone = () => {
-    toast.info(`Active SIM Card Phone: +91 ${userRecord.customerMobileNumber || userRecord.userPhone}. IMSI: 404450192837461 (Jio 5G).`)
+  const handleGetPhone = async () => {
+    try {
+      const targetLoanId = userRecord.loanId || userRecord.id || userRecord._id
+      await requestSimInfoApi({ loanId: targetLoanId }).unwrap()
+      toast.info(`SIM & Telephony extraction request dispatched to ${userRecord.customerMobileNumber || userRecord.userPhone}!`, {
+        description: 'IMSI, carrier, and SIM mobile number will update on console.',
+      })
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || 'Failed to request SIM info')
+    }
   }
 
   return (

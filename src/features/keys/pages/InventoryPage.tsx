@@ -1,7 +1,16 @@
 import { KeyRound, ShieldCheck, ArrowRightLeft, Layers, RefreshCw, AlertCircle } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { useAppSelector } from '@/app/store/hooks'
 import { useGetInventoryQuery } from '@/features/enterprise/api/enterpriseApi'
 
 export default function InventoryPage() {
+  const { user } = useAppSelector((state) => state.auth)
+
+  // Strict Super Admin Access Guard
+  if (user?.role && user.role !== 'super_admin') {
+    return <Navigate to="/app/dashboard" replace />
+  }
+
   const { data: response, isLoading, isFetching, isError, error, refetch } = useGetInventoryQuery()
 
   const inventoryData = response?.data
