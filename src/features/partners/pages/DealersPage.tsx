@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, LogIn, FileText, Edit, Key, Loader2 } from 'lucide-react'
 import { useAppSelector, useAppDispatch } from '@/app/store/hooks'
 import { useGetDealersQuery } from '@/features/partners/api/partnersApi'
-import { useImpersonateUserMutation } from '@/features/enterprise/api/enterpriseApi'
+import {
+  useImpersonateUserMutation,
+  useTransferKeyBatchMutation,
+} from '@/features/enterprise/api/enterpriseApi'
 import { setCredentials } from '@/features/auth/slices/authSlice'
 import type { DealerRecord } from '../types'
+import { Modal } from '@/components/ui/Modal'
 import { DealerDetailsModal } from '@/components/modals/DealerDetailsModal'
 import { DealerFollowupModal } from '@/components/modals/DealerFollowupModal'
 import { KeysReturnModal } from '@/components/modals/KeysReturnModal'
@@ -17,7 +21,7 @@ export default function DealersPage() {
   const { user } = useAppSelector((state) => state.auth)
   const role = user?.role || 'super_admin'
 
-  const { data: apiResponse, isLoading } = useGetDealersQuery()
+  const { data: apiResponse, isLoading, refetch } = useGetDealersQuery()
   const [impersonateUser] = useImpersonateUserMutation()
   const rawList = apiResponse?.data && Array.isArray(apiResponse.data) ? apiResponse.data : []
 
@@ -77,6 +81,13 @@ export default function DealersPage() {
   const [isFollowupOpen, setIsFollowupOpen] = useState(false)
   const [returnDealerName, setReturnDealerName] = useState('')
   const [isReturnOpen, setIsReturnOpen] = useState(false)
+
+  // Allocate / Transfer Keys Modal State (Green Key Action)
+  const [isAllocateModalOpen, setIsAllocateModalOpen] = useState(false)
+  const [selectedDealerForAllocate, setSelectedDealerForAllocate] = useState<DealerRecord | null>(null)
+  const [allocateCount, setAllocateCount] = useState<number>(50)
+  const [allocateNote, setAllocateNote] = useState<string>('')
+  const [transferKeyBatch, { isLoading: isTransferring }] = useTransferKeyBatchMutation()
 
   // Scope dealers to active actor's hierarchy authority
   const roleScopedDealers = useMemo(() => {
@@ -186,6 +197,39 @@ export default function DealersPage() {
   const handleOpenReturn = (d: DealerRecord) => {
     setReturnDealerName(d.dealerShop)
     setIsReturnOpen(true)
+  }
+
+  const handleAllocateKeys = (d: DealerRecord) => {
+    setSelectedDealerForAllocate(d)
+    setAllocateCount(50)
+    setAllocateNote(`Distributor key transfer to ${d.dealerShop || d.name}`)
+    setIsAllocateModalOpen(true)
+  }
+
+  const handleAllocateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedDealerForAllocate) return
+    if (!allocateCount || allocateCount <= 0) {
+      toast.error('Please enter a valid key count greater than 0')
+      return
+    }
+
+    const targetId = selectedDealerForAllocate._id || selectedDealerForAllocate.id
+    const dealerName = selectedDealerForAllocate.dealerShop || selectedDealerForAllocate.name
+
+    try {
+      const res = await transferKeyBatch({
+        toUserId: targetId,
+        quantity: allocateCount,
+        note: allocateNote || `Distributor key transfer to ${dealerName}`,
+      }).unwrap()
+
+      toast.success(res?.message || `Successfully transferred ${allocateCount} keys to ${dealerName}!`)
+      setIsAllocateModalOpen(false)
+      refetch?.()
+    } catch (err: any) {
+      toast.error(err?.data?.message || `Failed to transfer keys to ${dealerName}`)
+    }
   }
 
   const handleEditDealer = (d: DealerRecord) => {
@@ -477,7 +521,7 @@ export default function DealersPage() {
               <th className="w-28 min-w-[100px] text-center whitespace-nowrap">Total Keys</th>
               <th className="w-28 min-w-[100px] text-center whitespace-nowrap">Login</th>
               <th className="w-28 min-w-[100px] text-center whitespace-nowrap">Followup</th>
-              <th className="w-36 min-w-[130px] text-center whitespace-nowrap">Action</th>
+              <th className="w-40 min-w-[150px] text-center whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -531,7 +575,7 @@ export default function DealersPage() {
                     </button>
                   </td>
                   <td>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleOpenDetails(d)}
@@ -549,6 +593,18 @@ export default function DealersPage() {
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </button>
+
+                      {/* Green Key: Transfer Keys to Dealer (Distributor -> Dealer) */}
+                      {role !== 'dealer' && (
+                        <button
+                          type="button"
+                          onClick={() => handleAllocateKeys(d)}
+                          className="p-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+                          title="Transfer Keys to Dealer"
+                        >
+                          <Key className="h-3.5 w-3.5" />
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -604,6 +660,87 @@ export default function DealersPage() {
         onClose={() => setIsReturnOpen(false)}
         distributorName={returnDealerName}
       />
+
+      {/* ─── Modal 4: Transfer Keys to Dealer (Green Key Action) ─── */}
+      <Modal
+        isOpen={isAllocateModalOpen}
+        onClose={() => setIsAllocateModalOpen(false)}
+        title={`Transfer Keys to ${selectedDealerForAllocate?.dealerShop || selectedDealerForAllocate?.name || 'Dealer'}`}
+        description={`Dispatch verified license keys directly from your inventory to ${selectedDealerForAllocate?.dealerShop || 'retail dealer'}.`}
+        size="sm"
+      >
+        <form onSubmit={handleAllocateSubmit} className="space-y-4 pt-2 text-xs">
+          <div className="p-3 rounded-xl bg-muted/60 border border-border/60 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Target Dealer:</span>
+              <span className="font-bold text-foreground">{selectedDealerForAllocate?.dealerShop || selectedDealerForAllocate?.name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Dealer City:</span>
+              <span className="font-medium text-foreground">{selectedDealerForAllocate?.city || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Current Available Keys:</span>
+              <span className="font-mono font-bold text-primary">{selectedDealerForAllocate?.availableKeys ?? 0}</span>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">
+              Number of Keys to Transfer *
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={10000}
+              required
+              value={allocateCount}
+              onChange={(e) => setAllocateCount(Math.max(1, parseInt(e.target.value) || 0))}
+              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono font-bold"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">
+              Transfer Reference / Note
+            </label>
+            <input
+              type="text"
+              value={allocateNote}
+              onChange={(e) => setAllocateNote(e.target.value)}
+              placeholder="e.g. Weekly inventory replenishment"
+              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setIsAllocateModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isTransferring}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50"
+            >
+              {isTransferring ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Transferring...</span>
+                </>
+              ) : (
+                <>
+                  <Key className="h-3.5 w-3.5" />
+                  <span>Transfer {allocateCount} Keys</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

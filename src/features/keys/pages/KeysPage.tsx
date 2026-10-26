@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   PlusCircle,
   Send,
@@ -7,6 +7,9 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  Building2,
+  Users,
+  Store,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type ColumnDef } from '@/components/common/DataTable/DataTable'
@@ -17,22 +20,55 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { useAppSelector } from '@/app/store/hooks'
 import { hasPermission } from '@/config/permissions'
-import { copyToClipboard } from '@/lib/utils'
+import { copyToClipboard, cn } from '@/lib/utils'
 import {
   useGetKeysQuery,
   useBulkGenerateKeysMutation,
   useTransferKeyBatchMutation,
   useReclaimKeyBatchMutation,
-  useGetStockistsQuery,
 } from '@/features/enterprise/api/enterpriseApi'
+import {
+  useGetStockistsQuery,
+  useGetDistributorsQuery,
+  useGetDealersQuery,
+} from '@/features/partners/api/partnersApi'
 import { useDebounce } from '@/hooks/useDebounce'
 import { toast } from 'sonner'
 
 export default function KeysPage() {
   const { user } = useAppSelector((state) => state.auth)
-  const canGenerate = user?.role === 'super_admin'
-  const canTransfer = hasPermission(user?.role, 'keys:transfer') || user?.role === 'super_admin'
-  const canReclaim = hasPermission(user?.role, 'keys:reclaim') || user?.role === 'super_admin'
+  const userRole = user?.role || 'super_admin'
+  const isSuper = userRole === 'super_admin'
+  const isStockist = userRole === 'stockist'
+  const isDistributor = userRole === 'distributor'
+  const isDealer = userRole === 'dealer'
+
+  const canGenerate = isSuper
+  const canTransfer = hasPermission(userRole, 'keys:transfer') || isSuper
+  const canReclaim = hasPermission(userRole, 'keys:reclaim') || isSuper
+
+  // Hierarchy Destination Tier:
+  // - Super Admin: can choose between Stockist (default), Distributor, Dealer
+  // - Stockist: can only transfer to Distributor
+  // - Distributor: can only transfer to Dealer
+  const defaultTargetTier: 'stockist' | 'distributor' | 'dealer' = isDistributor
+    ? 'dealer'
+    : isStockist
+    ? 'distributor'
+    : 'stockist'
+
+  const [targetTier, setTargetTier] = useState<'stockist' | 'distributor' | 'dealer'>(defaultTargetTier)
+
+  // Synchronize target tier when actor role changes
+  useEffect(() => {
+    if (isDistributor) {
+      setTargetTier('dealer')
+    } else if (isStockist) {
+      setTargetTier('distributor')
+    } else {
+      setTargetTier('stockist')
+    }
+  }, [userRole, isDistributor, isStockist])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -41,7 +77,7 @@ export default function KeysPage() {
 
   const debouncedSearch = useDebounce(searchQuery, 350)
 
-  // Live queries
+  // Live keys query
   const {
     data: apiResponse,
     isLoading,
@@ -56,8 +92,53 @@ export default function KeysPage() {
     status: statusFilter === 'all' ? undefined : statusFilter,
   })
 
+  // Live queries for hierarchy partners
   const { data: stockistsRes } = useGetStockistsQuery()
-  const stockistsList = stockistsRes?.data || []
+  const { data: distributorsRes } = useGetDistributorsQuery()
+  const { data: dealersRes } = useGetDealersQuery()
+
+  // Stockists list (Tier 1)
+  const stockistsList = useMemo(() => {
+    return stockistsRes?.data || []
+  }, [stockistsRes?.data])
+
+  // Distributors list (Tier 2 - scoped if actor is a Stockist)
+  const distributorsList = useMemo(() => {
+    const list = distributorsRes?.data || []
+    if (isStockist && user?.name) {
+      const stockistName = user.name.toLowerCase()
+      const filtered = list.filter(
+        (d) =>
+          d.parentName?.toLowerCase().includes(stockistName) ||
+          (d as any).stockist?.toLowerCase().includes(stockistName) ||
+          (d as any).superStockiest?.toLowerCase().includes(stockistName)
+      )
+      return filtered.length > 0 ? filtered : list
+    }
+    return list
+  }, [distributorsRes?.data, isStockist, user?.name])
+
+  // Dealers list (Tier 3 - scoped if actor is a Distributor)
+  const dealersList = useMemo(() => {
+    const list = dealersRes?.data || []
+    if (isDistributor && user?.name) {
+      const distName = user.name.toLowerCase()
+      const filtered = list.filter(
+        (d) =>
+          d.parentName?.toLowerCase().includes(distName) ||
+          (d as any).distributor?.toLowerCase().includes(distName)
+      )
+      return filtered.length > 0 ? filtered : list
+    }
+    return list
+  }, [dealersRes?.data, isDistributor, user?.name])
+
+  // Active target partner list based on targetTier
+  const activePartnersList = useMemo(() => {
+    if (targetTier === 'dealer') return dealersList
+    if (targetTier === 'distributor') return distributorsList
+    return stockistsList
+  }, [targetTier, dealersList, distributorsList, stockistsList])
 
   // Mutations
   const [bulkGenerateKeys, { isLoading: isGenerating }] = useBulkGenerateKeysMutation()
@@ -77,6 +158,18 @@ export default function KeysPage() {
   const [transferQuantity, setTransferQuantity] = useState('50')
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferNote, setTransferNote] = useState('')
+
+  // Synchronize transferTargetId when active list or targetTier changes
+  useEffect(() => {
+    if (activePartnersList.length > 0) {
+      const currentValid = activePartnersList.some((p) => (p._id || p.id) === transferTargetId)
+      if (!currentValid) {
+        setTransferTargetId(activePartnersList[0]._id || activePartnersList[0].id)
+      }
+    } else {
+      setTransferTargetId('')
+    }
+  }, [activePartnersList, targetTier])
 
   const [reclaimQuantity, setReclaimQuantity] = useState('10')
   const [reclaimNote, setReclaimNote] = useState('Routine key audit recovery')
@@ -123,9 +216,9 @@ export default function KeysPage() {
   // Handle Transfer
   const handleTransferSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const target = transferTargetId || stockistsList[0]?._id
+    const target = transferTargetId || activePartnersList[0]?._id || activePartnersList[0]?.id
     if (!target) {
-      toast.error('Please select a target partner')
+      toast.error(`Please select a target ${targetTier}`)
       return
     }
     const qty = parseInt(transferQuantity, 10)
@@ -134,14 +227,21 @@ export default function KeysPage() {
       return
     }
 
+    const selectedPartner = activePartnersList.find((p) => (p._id || p.id) === target)
+    const targetName =
+      selectedPartner?.name ||
+      (selectedPartner as any)?.agencyName ||
+      (selectedPartner as any)?.dealerShop ||
+      targetTier
+
     try {
       await transferKeyBatch({
         toUserId: target,
         quantity: qty,
-        note: transferNote || 'Super Admin Key Dispatch',
+        note: transferNote || `${userRole.toUpperCase()} Key Allocation to ${targetName}`,
       }).unwrap()
 
-      toast.success(`Allocated ${qty} keys downstream!`)
+      toast.success(`Allocated ${qty} keys downstream to ${targetName}!`)
       setIsTransferOpen(false)
       setTransferNote('')
       refetch()
@@ -275,7 +375,13 @@ export default function KeysPage() {
     <div className="space-y-6">
       <PageHeader
         title="License Key Management"
-        subtitle="Generate digital master key batches, allocate quotas downstream to Stockists, and monitor activation life-cycle."
+        subtitle={
+          isDistributor
+            ? 'Manage distributor license keys, allocate quotas downstream to retail Dealers, and monitor activations.'
+            : isStockist
+            ? 'Manage stockist inventory, transfer unlock keys downstream to authorized Distributors, and monitor quotas.'
+            : 'Generate digital master key batches, allocate quotas downstream through the hierarchy, and monitor activation life-cycle.'
+        }
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -435,25 +541,131 @@ export default function KeysPage() {
       <Modal
         isOpen={isTransferOpen}
         onClose={() => setIsTransferOpen(false)}
-        title="Transfer Keys Downstream"
-        description="Dispatch verified unlock license keys to an authorized subordinate stockist or partner."
+        title={
+          isDistributor
+            ? 'Transfer Keys to Retail Dealer'
+            : isStockist
+            ? 'Transfer Keys to Distributor'
+            : 'Transfer Keys Downstream'
+        }
+        description={
+          isDistributor
+            ? 'Dispatch verified unlock license keys to an authorized retail dealer.'
+            : isStockist
+            ? 'Dispatch verified unlock license keys to an authorized subordinate distributor under your stockist account.'
+            : 'Dispatch verified unlock license keys to subordinate network partners.'
+        }
         size="md"
       >
         <form onSubmit={handleTransferSubmit} className="space-y-4 pt-1 text-xs">
+          {/* If Super Admin, show tier switcher pills */}
+          {isSuper && (
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">Hierarchy Destination Tier</label>
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-muted/60 border border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setTargetTier('stockist')}
+                  className={cn(
+                    'py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5',
+                    targetTier === 'stockist'
+                      ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Building2 className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Stockist (Tier 1)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetTier('distributor')}
+                  className={cn(
+                    'py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5',
+                    targetTier === 'distributor'
+                      ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Users className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>Distributor (Tier 2)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetTier('dealer')}
+                  className={cn(
+                    'py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5',
+                    targetTier === 'dealer'
+                      ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Store className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Dealer (Tier 3)</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Target Partner Dropdown */}
           <div className="space-y-1">
-            <label className="font-semibold text-foreground">Target Stockist / Hub *</label>
-            <select
-              value={transferTargetId || stockistsList[0]?._id || ''}
-              onChange={(e) => setTransferTargetId(e.target.value)}
-              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {stockistsList.map((s) => (
-                <option key={s._id || s.id} value={s._id || s.id}>
-                  {s.name} ({s.id}) — {s.city}, {s.territory}
-                </option>
-              ))}
-            </select>
+            <label className="font-semibold text-foreground">
+              {targetTier === 'stockist'
+                ? 'Target Stockist / Master Hub *'
+                : targetTier === 'distributor'
+                ? 'Target Distributor Partner *'
+                : 'Target Retail Dealer *'}
+            </label>
+            {activePartnersList.length === 0 ? (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
+                No active {targetTier}s found under your network authority.
+              </div>
+            ) : (
+              <select
+                value={transferTargetId}
+                onChange={(e) => setTransferTargetId(e.target.value)}
+                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+              >
+                {activePartnersList.map((p) => {
+                  const pid = p._id || p.id
+                  const pname = p.name || (p as any).agencyName || (p as any).dealerShop || 'Partner'
+                  const code = p.entityCode || p.id?.slice(-6) || ''
+                  const city = p.city || ''
+                  const state = (p as any).state || p.territory || ''
+                  const loc = city ? `${city}${state ? ', ' + state : ''}` : state
+                  const keys = p.available ?? (p as any).availableKeys ?? 0
+                  return (
+                    <option key={pid} value={pid}>
+                      {pname} {code ? `(${code})` : ''} {loc ? `— ${loc}` : ''} [Keys: {keys}]
+                    </option>
+                  )
+                })}
+              </select>
+            )}
           </div>
+
+          {/* Current Partner Info Card */}
+          {transferTargetId && (
+            (() => {
+              const selected = activePartnersList.find((p) => (p._id || p.id) === transferTargetId)
+              if (!selected) return null
+              const name = selected.name || (selected as any).agencyName || (selected as any).dealerShop
+              const phone = selected.phone || '—'
+              const city = selected.city || '—'
+              const available = selected.available ?? (selected as any).availableKeys ?? 0
+              return (
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-foreground">{name}</span>
+                    <span className="text-muted-foreground ml-2 font-mono text-[11px]">{phone} • {city}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-muted-foreground block">Current Quota</span>
+                    <span className="font-mono font-bold text-primary">{available} Available</span>
+                  </div>
+                </div>
+              )
+            })()
+          )}
 
           <div className="space-y-1">
             <label className="font-semibold text-foreground">Quantity to Transfer *</label>
@@ -473,7 +685,7 @@ export default function KeysPage() {
               type="text"
               value={transferNote}
               onChange={(e) => setTransferNote(e.target.value)}
-              placeholder="e.g. Consignment for Tier-1 expansion"
+              placeholder={`e.g. Allocation for ${targetTier} network quota`}
             />
           </div>
 
@@ -487,8 +699,8 @@ export default function KeysPage() {
             </button>
             <button
               type="submit"
-              disabled={isTransferring}
-              className="btn-action-primary text-xs font-bold py-2 px-5 flex items-center gap-1.5"
+              disabled={isTransferring || activePartnersList.length === 0}
+              className="btn-action-primary text-xs font-bold py-2 px-5 flex items-center gap-1.5 disabled:opacity-50"
             >
               {isTransferring && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>Confirm Dispatch</span>
